@@ -24,6 +24,7 @@ class Lesson extends Model
     ];
 
     protected $fillable = [
+        'cycle_id',
         'student_id',
         'teacher_id',
         'scheduled_start_at',
@@ -52,6 +53,11 @@ class Lesson extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function cycle(): BelongsTo
+    {
+        return $this->belongsTo(Cycle::class);
     }
 }
 

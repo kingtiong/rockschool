@@ -62,3 +62,18 @@ All demo users use password: `password`
   - shows lessons
   - colored status badges: scheduled / completed / postponed / missed
   - teacher can mark a lesson “completed”
+
+### Role-based pages
+
+- **Student**
+  - `Fees & Cycles`: `/student/cycles` (upload bank-in slip)
+  - `Schedule`: request change / report absence (2-hour rule)
+- **Teacher**
+  - `Earnings`: `/teacher/earnings`
+- **Management**
+  - `Fee Plans`: `/management/fee-plans`
+  - `Enrollments`: `/management/enrollments` (schedule 4 recurring lessons)
+  - `Payments`: `/management/payments` (approve/reject)
+  - `Teacher Shares`: `/management/teacher-shares`
+  - `Payouts`: `/management/payouts`
+  - `Reschedule Requests`: `/management/reschedule-requests`

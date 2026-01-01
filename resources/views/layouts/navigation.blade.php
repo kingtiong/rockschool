@@ -18,6 +18,36 @@
                     <x-nav-link :href="route('schedule.index')" :active="request()->routeIs('schedule.*')">
                         {{ __('Schedule') }}
                     </x-nav-link>
+                    @if(auth()->user()->role === 'student')
+                        <x-nav-link :href="route('student.cycles.index')" :active="request()->routeIs('student.cycles.*')">
+                            {{ __('Fees') }}
+                        </x-nav-link>
+                    @endif
+                    @if(auth()->user()->role === 'teacher')
+                        <x-nav-link :href="route('teacher.earnings.index')" :active="request()->routeIs('teacher.earnings.*')">
+                            {{ __('Earnings') }}
+                        </x-nav-link>
+                    @endif
+                    @if(auth()->user()->role === 'management')
+                        <x-nav-link :href="route('management.fee-plans.index')" :active="request()->routeIs('management.fee-plans.*')">
+                            {{ __('Fee Plans') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.enrollments.index')" :active="request()->routeIs('management.enrollments.*')">
+                            {{ __('Enrollments') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.payments.index')" :active="request()->routeIs('management.payments.*')">
+                            {{ __('Payments') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.teacher-shares.index')" :active="request()->routeIs('management.teacher-shares.*')">
+                            {{ __('Teacher Shares') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.payouts.index')" :active="request()->routeIs('management.payouts.*')">
+                            {{ __('Payouts') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.reschedule-requests.index')" :active="request()->routeIs('management.reschedule-requests.*')">
+                            {{ __('Reschedule') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -76,6 +106,36 @@
             <x-responsive-nav-link :href="route('schedule.index')" :active="request()->routeIs('schedule.*')">
                 {{ __('Schedule') }}
             </x-responsive-nav-link>
+            @if(auth()->user()->role === 'student')
+                <x-responsive-nav-link :href="route('student.cycles.index')" :active="request()->routeIs('student.cycles.*')">
+                    {{ __('Fees') }}
+                </x-responsive-nav-link>
+            @endif
+            @if(auth()->user()->role === 'teacher')
+                <x-responsive-nav-link :href="route('teacher.earnings.index')" :active="request()->routeIs('teacher.earnings.*')">
+                    {{ __('Earnings') }}
+                </x-responsive-nav-link>
+            @endif
+            @if(auth()->user()->role === 'management')
+                <x-responsive-nav-link :href="route('management.fee-plans.index')" :active="request()->routeIs('management.fee-plans.*')">
+                    {{ __('Fee Plans') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.enrollments.index')" :active="request()->routeIs('management.enrollments.*')">
+                    {{ __('Enrollments') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.payments.index')" :active="request()->routeIs('management.payments.*')">
+                    {{ __('Payments') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.teacher-shares.index')" :active="request()->routeIs('management.teacher-shares.*')">
+                    {{ __('Teacher Shares') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.payouts.index')" :active="request()->routeIs('management.payouts.*')">
+                    {{ __('Payouts') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.reschedule-requests.index')" :active="request()->routeIs('management.reschedule-requests.*')">
+                    {{ __('Reschedule') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

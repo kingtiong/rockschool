@@ -67,12 +67,46 @@
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
                                             @if(auth()->user()->role === 'teacher' && $lesson->status !== 'completed')
-                                                <form method="POST" action="{{ route('schedule.complete', $lesson) }}">
+                                                <form method="POST" action="{{ route('schedule.complete', $lesson) }}" class="flex items-center justify-end gap-2">
                                                     @csrf
+                                                    <input
+                                                        type="text"
+                                                        name="remarks"
+                                                        placeholder="{{ __('Remarks (optional)') }}"
+                                                        class="hidden lg:block border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
+                                                    />
                                                     <x-primary-button>
                                                         {{ __('Mark completed') }}
                                                     </x-primary-button>
                                                 </form>
+                                            @elseif(auth()->user()->role === 'student' && in_array($lesson->status, ['scheduled','postponed'], true))
+                                                <div class="flex flex-col items-end gap-2">
+                                                    <form method="POST" action="{{ route('schedule.absence', $lesson) }}">
+                                                        @csrf
+                                                        <x-secondary-button>
+                                                            {{ __("Can't attend") }}
+                                                        </x-secondary-button>
+                                                    </form>
+
+                                                    <form method="POST" action="{{ route('schedule.request-change', $lesson) }}" class="flex flex-col items-end gap-2">
+                                                        @csrf
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="requested_start_at"
+                                                            class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
+                                                            required
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            name="reason"
+                                                            placeholder="{{ __('Reason (optional)') }}"
+                                                            class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
+                                                        />
+                                                        <x-primary-button>
+                                                            {{ __('Request change') }}
+                                                        </x-primary-button>
+                                                    </form>
+                                                </div>
                                             @else
                                                 <span class="text-gray-400">—</span>
                                             @endif

@@ -9,6 +9,7 @@ use App\Http\Controllers\Management\PaymentController as ManagementPaymentContro
 use App\Http\Controllers\Management\PayoutController as ManagementPayoutController;
 use App\Http\Controllers\Management\RescheduleRequestController as ManagementRescheduleRequestController;
 use App\Http\Controllers\Management\TeacherShareController as ManagementTeacherShareController;
+use App\Http\Controllers\Management\TimetableController as ManagementTimetableController;
 use App\Http\Controllers\Student\CycleController as StudentCycleController;
 use App\Http\Controllers\Student\PaymentController as StudentPaymentController;
 use App\Http\Controllers\Teacher\EarningController as TeacherEarningController;
@@ -43,6 +44,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:management')->prefix('management')->name('management.')->group(function () {
+        Route::get('/timetable', [ManagementTimetableController::class, 'index'])->name('timetable.index');
+
         Route::get('/fee-plans', [ManagementFeePlanController::class, 'index'])->name('fee-plans.index');
         Route::get('/fee-plans/{feePlan}/edit', [ManagementFeePlanController::class, 'edit'])->name('fee-plans.edit');
         Route::put('/fee-plans/{feePlan}', [ManagementFeePlanController::class, 'update'])->name('fee-plans.update');

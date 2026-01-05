@@ -175,7 +175,7 @@
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="overflow-auto max-h-[70vh] border border-gray-200 rounded-md">
                         <div class="min-w-[1200px]">
                             <table class="w-full border-separate border-spacing-0">
                                 <thead>

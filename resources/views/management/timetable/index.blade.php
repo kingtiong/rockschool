@@ -199,7 +199,12 @@
                         </div>
                     </div>
 
-                    <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px; cursor: grab;">
+                    <div
+                        id="timetable-grid"
+                        class="overflow-auto border border-gray-200 rounded-md"
+                        style="max-height: 70vh; min-height: 420px; cursor: grab; scrollbar-gutter: stable;"
+                        data-jump-target="{{ $firstLessonTimeKey ? '#time-'.str_replace(':','-',$firstLessonTimeKey) : '' }}"
+                    >
                         @php($minWidthPx = 90 + (count($dates) * count($rooms) * 180))
                         <div style="min-width: {{ max(1200, $minWidthPx) }}px;">
                             @php($slotCount = $slotCount ?? 28)
@@ -285,6 +290,15 @@
     var link = document.getElementById('jump-to-first');
     var grid = document.getElementById('timetable-grid');
     if (!grid) return;
+
+    // Auto-scroll to first class time on load.
+    var jump = grid.getAttribute('data-jump-target');
+    if (jump && jump.charAt(0) === '#') {
+      var row0 = document.querySelector(jump);
+      if (row0) {
+        grid.scrollTop = Math.max(0, row0.offsetTop - 80);
+      }
+    }
 
     if (link) {
       link.addEventListener('click', function (e) {

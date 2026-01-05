@@ -29,27 +29,42 @@
                         </x-nav-link>
                     @endif
                     @if(auth()->user()->role === 'management')
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'monday'])" :active="request()->routeIs('management.timetable.*') && request('day', 'monday') === 'monday'">
-                            {{ __('Monday') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'tuesday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'tuesday'">
-                            {{ __('Tuesday') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'wednesday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'wednesday'">
-                            {{ __('Wednesday') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'thursday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'thursday'">
-                            {{ __('Thursday') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'friday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'friday'">
-                            {{ __('Friday') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'saturday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'saturday'">
-                            {{ __('Saturday') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('management.timetable.index', ['day' => 'sunday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'sunday'">
-                            {{ __('Sunday') }}
-                        </x-nav-link>
+                        <x-dropdown align="left" width="48">
+                            <x-slot name="trigger">
+                                <button class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none {{ request()->routeIs('management.timetable.*') ? 'border-indigo-400 text-gray-900 focus:border-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:text-gray-700 focus:border-gray-300' }}">
+                                    <div>{{ __('Timetable') }}</div>
+                                    <div class="ms-1">
+                                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </button>
+                            </x-slot>
+
+                            <x-slot name="content">
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'monday'])">
+                                    {{ __('Monday') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'tuesday'])">
+                                    {{ __('Tuesday') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'wednesday'])">
+                                    {{ __('Wednesday') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'thursday'])">
+                                    {{ __('Thursday') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'friday'])">
+                                    {{ __('Friday') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'saturday'])">
+                                    {{ __('Saturday') }}
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('management.timetable.index', ['day' => 'sunday'])">
+                                    {{ __('Sunday') }}
+                                </x-dropdown-link>
+                            </x-slot>
+                        </x-dropdown>
                         <x-nav-link :href="route('management.branches.index')" :active="request()->routeIs('management.branches.*')">
                             {{ __('Branches') }}
                         </x-nav-link>
@@ -144,6 +159,9 @@
                 </x-responsive-nav-link>
             @endif
             @if(auth()->user()->role === 'management')
+                <div class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {{ __('Timetable') }}
+                </div>
                 <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'monday'])" :active="request()->routeIs('management.timetable.*') && request('day', 'monday') === 'monday'">
                     {{ __('Monday') }}
                 </x-responsive-nav-link>

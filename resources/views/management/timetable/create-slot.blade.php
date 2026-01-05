@@ -23,11 +23,12 @@
                         </div>
 
                         <div>
-                            <x-input-label for="classroom_number" :value="__('Classroom')" />
-                            <select id="classroom_number" name="classroom_number" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                            <x-input-label for="classroom_number" :value="__('Classroom (optional)')" />
+                            <select id="classroom_number" name="classroom_number" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">{{ __('Auto-assign') }}</option>
                                 @php($rooms = max(1, (int) ($branch?->classrooms_count ?? 1)))
                                 @for($i = 1; $i <= $rooms; $i++)
-                                    <option value="{{ $i }}" @selected(old('classroom_number', 1) == $i)>{{ __('Room') }} {{ $i }}</option>
+                                    <option value="{{ $i }}" @selected(old('classroom_number') == $i)>{{ __('Room') }} {{ $i }}</option>
                                 @endfor
                             </select>
                             <x-input-error :messages="$errors->get('classroom_number')" class="mt-2" />

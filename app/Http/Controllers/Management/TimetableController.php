@@ -177,7 +177,7 @@ class TimetableController extends Controller
     {
         $validated = $request->validate([
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
-            'classroom_number' => ['required', 'integer', 'min:1', 'max:50'],
+            'classroom_number' => ['nullable', 'integer', 'min:1', 'max:50'],
             'student_id' => ['required', 'integer', 'exists:users,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'start_date' => ['required', 'date'],
@@ -221,7 +221,7 @@ class TimetableController extends Controller
         $startAt = Carbon::parse($validated['start_date'].' '.$validated['start_time']);
         $intervalWeeks = (int) $validated['interval_weeks'];
 
-        $classroomNumber = (int) $validated['classroom_number'];
+        $classroomNumber = $validated['classroom_number'] ? (int) $validated['classroom_number'] : null;
 
         DB::transaction(function () use ($enrollment, $plan, $teacherId, $minutes, $startAt, $intervalWeeks, $branchId, $classroomNumber): void {
             // Keep enrollment in sync with management slot configuration.
@@ -254,13 +254,47 @@ class TimetableController extends Controller
 
             for ($i = 1; $i <= $lessonsPerCycle; $i++) {
                 $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
+                $lessonEnd = $lessonStart->copy()->addMinutes($minutes);
+
+                $room = $classroomNumber;
+                if (! $room) {
+                    $roomNumbers = Room::query()
+                        ->where('branch_id', $branchId)
+                        ->where('active', true)
+                        ->orderBy('number')
+                        ->pluck('number')
+                        ->map(fn ($n) => (int) $n)
+                        ->values()
+                        ->all();
+
+                    if (count($roomNumbers) === 0) {
+                        $roomNumbers = range(1, max(1, (int) (Branch::find($branchId)?->classrooms_count ?? 1)));
+                    }
+
+                    foreach ($roomNumbers as $r) {
+                        $occupied = Lesson::query()
+                            ->where('classroom_number', $r)
+                            ->where('scheduled_start_at', '<', $lessonEnd)
+                            ->where('scheduled_end_at', '>', $lessonStart)
+                            ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                            ->exists();
+
+                        if (! $occupied) {
+                            $room = $r;
+                            break;
+                        }
+                    }
+
+                    abort_unless($room, 422, 'No classroom available for this time slot.');
+                }
+
                 Lesson::create([
                     'cycle_id' => $cycle->id,
                     'student_id' => $enrollment->student_id,
                     'teacher_id' => $teacherId,
-                    'classroom_number' => $classroomNumber,
+                    'classroom_number' => $room,
                     'scheduled_start_at' => $lessonStart,
-                    'scheduled_end_at' => $lessonStart->copy()->addMinutes($minutes),
+                    'scheduled_end_at' => $lessonEnd,
                     'minutes' => $minutes,
                     'status' => Lesson::STATUS_SCHEDULED,
                     'sequence_in_cycle' => $i,

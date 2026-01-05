@@ -8,6 +8,7 @@ use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\FeePlan;
 use App\Models\Lesson;
+use App\Models\Room;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,13 +116,49 @@ class EnrollmentController extends Controller
 
             for ($i = 1; $i <= $lessonsPerCycle; $i++) {
                 $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
+                $lessonEnd = $lessonStart->copy()->addMinutes($minutes);
+
+                $branchId = $enrollment->branch_id ? (int) $enrollment->branch_id : null;
+                $roomNumber = 1;
+                if ($branchId) {
+                    $roomNumbers = Room::query()
+                        ->where('branch_id', $branchId)
+                        ->where('active', true)
+                        ->orderBy('number')
+                        ->pluck('number')
+                        ->map(fn ($n) => (int) $n)
+                        ->values()
+                        ->all();
+
+                    if (count($roomNumbers) === 0) {
+                        $roomNumbers = range(1, max(1, (int) (Branch::find($branchId)?->classrooms_count ?? 1)));
+                    }
+
+                    $roomNumber = 0;
+                    foreach ($roomNumbers as $r) {
+                        $occupied = Lesson::query()
+                            ->where('classroom_number', $r)
+                            ->where('scheduled_start_at', '<', $lessonEnd)
+                            ->where('scheduled_end_at', '>', $lessonStart)
+                            ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                            ->exists();
+
+                        if (! $occupied) {
+                            $roomNumber = $r;
+                            break;
+                        }
+                    }
+
+                    abort_unless($roomNumber > 0, 422, 'No classroom available for this time slot.');
+                }
+
                 Lesson::create([
                     'cycle_id' => $cycle->id,
                     'student_id' => $enrollment->student_id,
                     'teacher_id' => $enrollment->teacher_id,
-                    'classroom_number' => 1,
+                    'classroom_number' => $roomNumber,
                     'scheduled_start_at' => $lessonStart,
-                    'scheduled_end_at' => $lessonStart->copy()->addMinutes($minutes),
+                    'scheduled_end_at' => $lessonEnd,
                     'minutes' => $minutes,
                     'status' => Lesson::STATUS_SCHEDULED,
                     'sequence_in_cycle' => $i,

@@ -86,10 +86,14 @@ class TimetableController extends Controller
 
         $firstLesson = $lessons->first();
         $firstLessonTimeKey = null;
+        $firstLessonDateKey = null;
+        $firstLessonRoom = null;
         if ($firstLesson?->scheduled_start_at) {
             $slotStart = $firstLesson->scheduled_start_at->copy()->second(0);
             $slotStart->minute($slotStart->minute < 30 ? 0 : 30);
             $firstLessonTimeKey = $slotStart->format('H:i');
+            $firstLessonDateKey = $firstLesson->scheduled_start_at->toDateString();
+            $firstLessonRoom = max(1, (int) ($firstLesson->classroom_number ?? 1));
         }
 
         $gridStart = $rangeStart->copy()->setTime(8, 0);
@@ -138,6 +142,11 @@ class TimetableController extends Controller
             $grid[$dateKey][$timeKey][$room] = $lesson;
         }
 
+        $firstCellHit = false;
+        if ($firstLessonDateKey && $firstLessonTimeKey && $firstLessonRoom) {
+            $firstCellHit = isset($grid[$firstLessonDateKey][$firstLessonTimeKey][$firstLessonRoom]);
+        }
+
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
@@ -157,6 +166,9 @@ class TimetableController extends Controller
             'lessonsCount' => $lessons->count(),
             'firstLesson' => $firstLesson,
             'firstLessonTimeKey' => $firstLessonTimeKey,
+            'firstLessonDateKey' => $firstLessonDateKey,
+            'firstLessonRoom' => $firstLessonRoom,
+            'firstCellHit' => $firstCellHit,
         ]);
     }
 

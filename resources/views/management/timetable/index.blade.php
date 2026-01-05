@@ -59,6 +59,13 @@
                         <span class="font-medium text-gray-800">{{ __('First class:') }}</span>
                         {{ $firstLesson->scheduled_start_at->format('Y-m-d g:i A') }}
                     </div>
+                    <div class="text-xs text-gray-500">
+                        {{ __('First cell match:') }}
+                        {{ $firstCellHit ? __('YES') : __('NO') }}
+                        @if($firstLessonDateKey && $firstLessonTimeKey && $firstLessonRoom)
+                            ({{ $firstLessonDateKey }} {{ $firstLessonTimeKey }} · {{ __('Room') }} {{ $firstLessonRoom }})
+                        @endif
+                    </div>
                     @if($firstLessonTimeKey)
                         <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="#time-{{ str_replace(':','-',$firstLessonTimeKey) }}">
                             {{ __('Jump to first class time') }}
@@ -66,6 +73,11 @@
                     @endif
                 @endif
             </div>
+            @if($lessonsCount > 0)
+                <div class="text-xs text-gray-500">
+                    {{ __('Tip: your first class is at 2:00 PM — click “Jump to first class time” or scroll inside the grid box down to 2:00 PM.') }}
+                </div>
+            @endif
 
             <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="date" value="{{ $weekStart->toDateString() }}" />

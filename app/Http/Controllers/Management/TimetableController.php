@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\Lesson;
+use App\Models\Room;
 use App\Models\RescheduleRequest;
 use App\Models\TeacherEarning;
 use App\Models\TeacherShare;
@@ -80,8 +81,20 @@ class TimetableController extends Controller
         $slotMinutes = 30;
         $slotCount = (int) (($gridEnd->diffInMinutes($gridStart)) / $slotMinutes);
 
-        $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
-        $rooms = range(1, $roomsCount);
+        $roomModels = collect();
+        $rooms = [];
+        if ($selectedBranch) {
+            $roomModels = Room::query()
+                ->where('branch_id', $selectedBranch->id)
+                ->where('active', true)
+                ->orderBy('number')
+                ->get();
+            $rooms = $roomModels->pluck('number')->map(fn ($n) => (int) $n)->all();
+        }
+        if (count($rooms) === 0) {
+            $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
+            $rooms = range(1, $roomsCount);
+        }
 
         $timeSlots = [];
         for ($m = 0; $m <= $gridEnd->diffInMinutes($gridStart); $m += $slotMinutes) {
@@ -117,6 +130,7 @@ class TimetableController extends Controller
             'slotMinutes' => $slotMinutes,
             'slotCount' => $slotCount,
             'rooms' => $rooms,
+            'roomModels' => $roomModels,
             'timeSlots' => $timeSlots,
             'grid' => $grid,
         ]);

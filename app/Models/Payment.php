@@ -24,13 +24,16 @@ class Payment extends Model
         'status',
         'bank_reference',
         'submitted_at',
+        'paid_at',
         'reviewed_by_user_id',
         'reviewed_at',
         'review_note',
+        'paid_note',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'paid_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
 

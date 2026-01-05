@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Cycle;
 use App\Models\Lesson;
 use App\Models\RescheduleRequest;
@@ -18,16 +19,33 @@ class ScheduleController extends Controller
     {
         $user = $request->user();
 
-        $query = Lesson::query()->with(['student', 'teacher'])->orderBy('scheduled_start_at');
+        $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+        ]);
+
+        $query = Lesson::query()
+            ->with(['student', 'teacher', 'cycle.enrollment.branch'])
+            ->orderBy('scheduled_start_at');
 
         if ($user->role === 'student') {
             $query->where('student_id', $user->id);
         } elseif ($user->role === 'teacher') {
             $query->where('teacher_id', $user->id);
+        } elseif ($user->role === 'management' && ! empty($validated['branch_id'])) {
+            $branchId = (int) $validated['branch_id'];
+            $query->whereHas('cycle.enrollment', function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            });
         }
 
         return view('schedule.index', [
             'lessons' => $query->get(),
+            'branches' => $user->role === 'management'
+                ? Branch::query()->where('active', true)->orderBy('name')->get()
+                : collect(),
+            'selectedBranchId' => $user->role === 'management'
+                ? ($validated['branch_id'] ?? null)
+                : null,
         ]);
     }
 

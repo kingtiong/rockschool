@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/payments', [ManagementPaymentController::class, 'index'])->name('payments.index');
         Route::post('/payments/{payment}/approve', [ManagementPaymentController::class, 'approve'])->name('payments.approve');
         Route::post('/payments/{payment}/reject', [ManagementPaymentController::class, 'reject'])->name('payments.reject');
+        Route::post('/payments/cycles/{cycle}/mark-paid', [ManagementPaymentController::class, 'markPaid'])->name('payments.cycles.mark-paid');
 
         Route::get('/teacher-shares', [ManagementTeacherShareController::class, 'index'])->name('teacher-shares.index');
         Route::post('/teacher-shares/{teacher}', [ManagementTeacherShareController::class, 'upsert'])->name('teacher-shares.upsert');

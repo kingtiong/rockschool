@@ -14,6 +14,23 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    @if(auth()->user()->role === 'management')
+                        <form method="GET" action="{{ route('schedule.index') }}" class="mb-4 flex flex-wrap items-end gap-3">
+                            <div>
+                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</div>
+                                <select name="branch_id" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                                    <option value="">{{ __('All branches') }}</option>
+                                    @foreach($branches as $b)
+                                        <option value="{{ $b->id }}" @selected((string) $selectedBranchId === (string) $b->id)>{{ $b->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="pt-5">
+                                <x-primary-button>{{ __('Filter') }}</x-primary-button>
+                            </div>
+                        </form>
+                    @endif
+
                     <div class="flex flex-wrap gap-2 items-center justify-between">
                         <div class="text-sm text-gray-600">
                             {{ __('Classes are color-coded by status.') }}
@@ -33,6 +50,9 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('When') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Duration') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Progress') }}</th>
+                                    @if(auth()->user()->role === 'management')
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</th>
+                                    @endif
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Student') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Teacher') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
@@ -56,6 +76,11 @@
                                                 —
                                             @endif
                                         </td>
+                                        @if(auth()->user()->role === 'management')
+                                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                                {{ $lesson->cycle?->enrollment?->branch?->name ?? '—' }}
+                                            </td>
+                                        @endif
                                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                                             {{ $lesson->student?->name ?? '—' }}
                                         </td>
@@ -114,7 +139,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">
+                                        <td colspan="{{ auth()->user()->role === 'management' ? 8 : 7 }}" class="px-4 py-8 text-center text-sm text-gray-500">
                                             {{ __('No scheduled classes yet.') }}
                                         </td>
                                     </tr>

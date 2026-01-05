@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\FeePlan;
+use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class EnrollmentController extends Controller
@@ -64,17 +68,67 @@ class EnrollmentController extends Controller
             abort_unless(in_array($minutes, $feePlan->allow_half_hour ? [30, 60] : [60], true), 422);
         }
 
-        Enrollment::create([
-            'branch_id' => $validated['branch_id'] ? (int) $validated['branch_id'] : null,
-            'student_id' => (int) $validated['student_id'],
-            'teacher_id' => $validated['teacher_id'] ? (int) $validated['teacher_id'] : null,
-            'fee_plan_id' => (int) $validated['fee_plan_id'],
-            'minutes_per_lesson' => $minutes,
-            'interval_weeks' => (int) $validated['interval_weeks'],
-            'status' => 'active',
-            'started_on' => $validated['started_on'] ?? null,
-            'preferred_start_time' => $validated['preferred_start_time'] ?? null,
-        ]);
+        DB::transaction(function () use ($validated, $feePlan, $minutes): void {
+            $intervalWeeks = (int) $validated['interval_weeks'];
+            $defaultLessonsPerCycle = (int) $feePlan->lessons_per_cycle;
+            $lessonsPerCycle = max(1, (int) ceil($defaultLessonsPerCycle / max(1, $intervalWeeks)));
+
+            $baseCycleFeeCents = (int) $feePlan->cycle_fee_cents;
+            if ($minutes === 30 && (int) $feePlan->minutes_per_lesson_default === 60 && $feePlan->allow_half_hour) {
+                $baseCycleFeeCents = (int) round($baseCycleFeeCents / 2);
+            }
+
+            // Pro-rate cycle fee by reduced lesson count when interval is 2 weeks.
+            $cycleFeeCents = (int) round($baseCycleFeeCents * ($lessonsPerCycle / max(1, $defaultLessonsPerCycle)));
+
+            $enrollment = Enrollment::create([
+                'branch_id' => $validated['branch_id'] ? (int) $validated['branch_id'] : null,
+                'student_id' => (int) $validated['student_id'],
+                'teacher_id' => $validated['teacher_id'] ? (int) $validated['teacher_id'] : null,
+                'fee_plan_id' => (int) $validated['fee_plan_id'],
+                'minutes_per_lesson' => $minutes,
+                'interval_weeks' => $intervalWeeks,
+                'status' => 'active',
+                'started_on' => $validated['started_on'] ?? null,
+                'preferred_start_time' => $validated['preferred_start_time'] ?? null,
+            ]);
+
+            $cycleNumber = 1;
+
+            $cycle = Cycle::create([
+                'enrollment_id' => $enrollment->id,
+                'cycle_fee_cents' => max(0, $cycleFeeCents),
+                'lessons_per_cycle' => $lessonsPerCycle,
+                'minutes_per_lesson' => $minutes,
+                'interval_weeks' => $intervalWeeks,
+                'cycle_minutes_total' => $lessonsPerCycle * $minutes,
+                'cycle_number' => $cycleNumber,
+                'status' => Cycle::STATUS_AWAITING_STUDENT_PAYMENT,
+                'starts_on' => ($validated['started_on'] ?? now()->toDateString()),
+            ]);
+
+            // Create lessons immediately when we have a date (and optional time).
+            if (! empty($validated['started_on'])) {
+                $time = $validated['preferred_start_time'] ?? '14:00';
+                $startAt = Carbon::parse($validated['started_on'].' '.$time);
+
+                for ($i = 1; $i <= $lessonsPerCycle; $i++) {
+                    $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
+                    Lesson::create([
+                        'cycle_id' => $cycle->id,
+                        'student_id' => $enrollment->student_id,
+                        'teacher_id' => $enrollment->teacher_id,
+                        'classroom_number' => 1,
+                        'scheduled_start_at' => $lessonStart,
+                        'scheduled_end_at' => $lessonStart->copy()->addMinutes($minutes),
+                        'minutes' => $minutes,
+                        'status' => Lesson::STATUS_SCHEDULED,
+                        'sequence_in_cycle' => $i,
+                        'cycle_size' => $lessonsPerCycle,
+                    ]);
+                }
+            }
+        });
 
         return redirect()->route('management.enrollments.index');
     }

@@ -79,6 +79,15 @@
                 </div>
             @endif
 
+            <div class="text-xs text-gray-500">
+                <span class="font-medium text-gray-700">{{ __('Debug:') }}</span>
+                {{ __('slots=') }}{{ ($slotCount ?? 0) + 1 }},
+                {{ __('slotMinutes=') }}{{ $slotMinutes ?? 30 }},
+                {{ __('grid=') }}{{ isset($gridStart) ? $gridStart->format('H:i') : '—' }}–{{ isset($gridEnd) ? $gridEnd->format('H:i') : '—' }},
+                {{ __('dates=') }}{{ isset($dates) ? count($dates) : 0 }},
+                {{ __('rooms=') }}{{ isset($rooms) ? count($rooms) : 0 }}
+            </div>
+
             <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="date" value="{{ $weekStart->toDateString() }}" />
                 <div>
@@ -189,6 +198,8 @@
 
                     <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px;">
                         <div class="min-w-[1200px]">
+                            @php($slotCount = $slotCount ?? 28)
+                            @php($slotMinutes = $slotMinutes ?? 30)
                             <table class="w-full border-separate border-spacing-0">
                                 <thead>
                                     <tr>

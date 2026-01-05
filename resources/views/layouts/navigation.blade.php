@@ -29,11 +29,32 @@
                         </x-nav-link>
                     @endif
                     @if(auth()->user()->role === 'management')
-                        <x-nav-link :href="route('management.timetable.index')" :active="request()->routeIs('management.timetable.*')">
-                            {{ __('Timetable') }}
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'monday'])" :active="request()->routeIs('management.timetable.*') && request('day', 'monday') === 'monday'">
+                            {{ __('Monday') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'tuesday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'tuesday'">
+                            {{ __('Tuesday') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'wednesday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'wednesday'">
+                            {{ __('Wednesday') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'thursday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'thursday'">
+                            {{ __('Thursday') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'friday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'friday'">
+                            {{ __('Friday') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'saturday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'saturday'">
+                            {{ __('Saturday') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.timetable.index', ['day' => 'sunday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'sunday'">
+                            {{ __('Sunday') }}
                         </x-nav-link>
                         <x-nav-link :href="route('management.branches.index')" :active="request()->routeIs('management.branches.*')">
                             {{ __('Branches') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('management.users.index', ['role' => 'student'])" :active="request()->routeIs('management.users.*')">
+                            {{ __('Users') }}
                         </x-nav-link>
                         <x-nav-link :href="route('management.fee-plans.index')" :active="request()->routeIs('management.fee-plans.*')">
                             {{ __('Fee Plans') }}
@@ -123,11 +144,32 @@
                 </x-responsive-nav-link>
             @endif
             @if(auth()->user()->role === 'management')
-                <x-responsive-nav-link :href="route('management.timetable.index')" :active="request()->routeIs('management.timetable.*')">
-                    {{ __('Timetable') }}
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'monday'])" :active="request()->routeIs('management.timetable.*') && request('day', 'monday') === 'monday'">
+                    {{ __('Monday') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'tuesday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'tuesday'">
+                    {{ __('Tuesday') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'wednesday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'wednesday'">
+                    {{ __('Wednesday') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'thursday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'thursday'">
+                    {{ __('Thursday') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'friday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'friday'">
+                    {{ __('Friday') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'saturday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'saturday'">
+                    {{ __('Saturday') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.timetable.index', ['day' => 'sunday'])" :active="request()->routeIs('management.timetable.*') && request('day') === 'sunday'">
+                    {{ __('Sunday') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('management.branches.index')" :active="request()->routeIs('management.branches.*')">
                     {{ __('Branches') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.users.index', ['role' => 'student'])" :active="request()->routeIs('management.users.*')">
+                    {{ __('Users') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('management.fee-plans.index')" :active="request()->routeIs('management.fee-plans.*')">
                     {{ __('Fee Plans') }}

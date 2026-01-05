@@ -26,6 +26,15 @@ class ManagementTimetableTest extends TestCase
             ->assertStatus(200);
     }
 
+    public function test_management_can_view_timetable_for_a_specific_day(): void
+    {
+        $management = User::factory()->create(['role' => 'management']);
+
+        $this->actingAs($management)
+            ->get('/management/timetable?date=2026-01-05&day=tuesday')
+            ->assertStatus(200);
+    }
+
     public function test_management_can_open_add_slot_form(): void
     {
         $management = User::factory()->create([

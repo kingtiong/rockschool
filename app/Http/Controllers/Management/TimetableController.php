@@ -20,6 +20,7 @@ class TimetableController extends Controller
     {
         $validated = $request->validate([
             'date' => ['nullable', 'date'],
+            'day' => ['nullable', 'string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
         ]);
 
         $date = isset($validated['date'])
@@ -28,6 +29,18 @@ class TimetableController extends Controller
 
         $weekStart = $date->copy()->startOfWeek(Carbon::MONDAY);
         $weekEnd = $weekStart->copy()->addDays(7);
+
+        $dayName = $validated['day'] ?? 'monday';
+        $dayOffsets = [
+            'monday' => 0,
+            'tuesday' => 1,
+            'wednesday' => 2,
+            'thursday' => 3,
+            'friday' => 4,
+            'saturday' => 5,
+            'sunday' => 6,
+        ];
+        $selectedDate = $weekStart->copy()->addDays($dayOffsets[$dayName] ?? 0);
 
         $lessons = Lesson::query()
             ->with(['teacher', 'student'])
@@ -47,11 +60,15 @@ class TimetableController extends Controller
             ];
         }
 
+        $selectedDay = collect($days)->first(fn (array $d) => $d['date']->toDateString() === $selectedDate->toDateString());
+
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
             'weekEnd' => $weekEnd,
             'days' => $days,
+            'selectedDayName' => $dayName,
+            'selectedDay' => $selectedDay,
         ]);
     }
 

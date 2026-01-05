@@ -11,6 +11,7 @@ use App\Http\Controllers\Management\PayoutController as ManagementPayoutControll
 use App\Http\Controllers\Management\RescheduleRequestController as ManagementRescheduleRequestController;
 use App\Http\Controllers\Management\TeacherShareController as ManagementTeacherShareController;
 use App\Http\Controllers\Management\TimetableController as ManagementTimetableController;
+use App\Http\Controllers\Management\UserController as ManagementUserController;
 use App\Http\Controllers\Student\CycleController as StudentCycleController;
 use App\Http\Controllers\Student\PaymentController as StudentPaymentController;
 use App\Http\Controllers\Teacher\EarningController as TeacherEarningController;
@@ -51,6 +52,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/timetable/lessons/{lesson}/postpone', [ManagementTimetableController::class, 'postpone'])->name('timetable.lessons.postpone');
         Route::get('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'editReschedule'])->name('timetable.lessons.reschedule.edit');
         Route::put('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'updateReschedule'])->name('timetable.lessons.reschedule.update');
+
+        Route::get('/users', [ManagementUserController::class, 'index'])->name('users.index');
+        Route::get('/users/students/create', [ManagementUserController::class, 'createStudent'])->name('users.students.create');
+        Route::get('/users/teachers/create', [ManagementUserController::class, 'createTeacher'])->name('users.teachers.create');
+        Route::post('/users', [ManagementUserController::class, 'store'])->name('users.store');
 
         Route::get('/branches', [ManagementBranchController::class, 'index'])->name('branches.index');
         Route::get('/branches/create', [ManagementBranchController::class, 'create'])->name('branches.create');

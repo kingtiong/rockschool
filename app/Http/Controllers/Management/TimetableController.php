@@ -46,6 +46,9 @@ class TimetableController extends Controller
             'sunday' => 6,
         ];
         $selectedDate = $weekStart->copy()->addDays($dayOffsets[$dayName] ?? 0);
+        $horizonWeeks = 8;
+        $rangeStart = $selectedDate->copy()->startOfDay();
+        $rangeEnd = $selectedDate->copy()->addWeeks($horizonWeeks)->startOfDay();
 
         $branches = Branch::query()->where('active', true)->orderBy('name')->get();
         $selectedBranchId = $validated['branch_id'] ?? $branches->first()?->id;
@@ -53,8 +56,8 @@ class TimetableController extends Controller
 
         $lessons = Lesson::query()
             ->with(['teacher', 'student', 'cycle.enrollment.branch'])
-            ->where('scheduled_start_at', '<', $weekEnd)
-            ->where('scheduled_end_at', '>', $weekStart)
+            ->where('scheduled_start_at', '<', $rangeEnd)
+            ->where('scheduled_end_at', '>', $rangeStart)
             ->when($selectedBranch, function ($q) use ($selectedBranch) {
                 $q->whereHas('cycle.enrollment', function ($q2) use ($selectedBranch) {
                     $q2->where('branch_id', $selectedBranch->id);
@@ -62,19 +65,6 @@ class TimetableController extends Controller
             })
             ->orderBy('scheduled_start_at')
             ->get();
-
-        $days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $d = $weekStart->copy()->addDays($i);
-            $days[] = [
-                'date' => $d,
-                'lessons' => $lessons
-                    ->filter(fn (Lesson $l) => $l->scheduled_start_at->toDateString() === $d->toDateString())
-                    ->values(),
-            ];
-        }
-
-        $selectedDay = collect($days)->first(fn (array $d) => $d['date']->toDateString() === $selectedDate->toDateString());
 
         $gridStart = $selectedDate->copy()->setTime(8, 0);
         $gridEnd = $selectedDate->copy()->setTime(22, 0);
@@ -101,28 +91,36 @@ class TimetableController extends Controller
             $timeSlots[] = $gridStart->copy()->addMinutes($m);
         }
 
+        $dates = [];
+        for ($w = 0; $w < $horizonWeeks; $w++) {
+            $dates[] = $selectedDate->copy()->addWeeks($w);
+        }
+
+        // Map lessons by [date][time][room] so the view can render fast.
         $grid = [];
-        $selectedLessons = collect($selectedDay['lessons'] ?? []);
-        foreach ($selectedLessons as $lesson) {
+        foreach ($lessons as $lesson) {
             /** @var Lesson $lesson */
             if (! $lesson->scheduled_start_at) {
                 continue;
             }
-            $key = $lesson->scheduled_start_at->format('H:i');
+
+            $dateKey = $lesson->scheduled_start_at->toDateString();
+            $timeKey = $lesson->scheduled_start_at->format('H:i');
             $room = (int) ($lesson->classroom_number ?? 0);
             if ($room <= 0) {
                 continue;
             }
-            $grid[$key][$room] = $lesson;
+            $grid[$dateKey][$timeKey][$room] = $lesson;
         }
 
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
             'weekEnd' => $weekEnd,
-            'days' => $days,
             'selectedDayName' => $dayName,
-            'selectedDay' => $selectedDay,
+            'selectedDate' => $selectedDate,
+            'horizonWeeks' => $horizonWeeks,
+            'dates' => $dates,
             'branches' => $branches,
             'selectedBranch' => $selectedBranch,
             'gridStart' => $gridStart,

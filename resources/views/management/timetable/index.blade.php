@@ -278,6 +278,39 @@
                             </table>
                         </div>
                     </div>
+
+                    <div class="mt-6">
+                        <div class="text-sm font-medium text-gray-800 mb-2">{{ __('Lessons in this view (sanity check)') }}</div>
+                        <div class="text-xs text-gray-500 mb-3">
+                            {{ __('If you see rows here but not in the grid, it means the grid is not rendering/scrolling properly in the browser.') }}
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Date/time') }}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Room') }}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Student') }}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Teacher') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @forelse($lessonsPreview as $l)
+                                        <tr>
+                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->scheduled_start_at?->format('Y-m-d g:i A') ?? '—' }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->classroom_number ?? 1 }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->student?->name ?? '—' }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->teacher?->name ?? '—' }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">{{ __('No lessons in this range.') }}</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -169,6 +169,8 @@ class TimetableController extends Controller
             'firstLessonDateKey' => $firstLessonDateKey,
             'firstLessonRoom' => $firstLessonRoom,
             'firstCellHit' => $firstCellHit,
+            // Safety: show a simple list in the UI to verify data.
+            'lessonsPreview' => $lessons->take(200),
         ]);
     }
 

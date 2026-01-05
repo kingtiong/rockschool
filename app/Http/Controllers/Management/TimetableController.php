@@ -83,6 +83,26 @@ class TimetableController extends Controller
         $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
         $rooms = range(1, $roomsCount);
 
+        $timeSlots = [];
+        for ($m = 0; $m <= $gridEnd->diffInMinutes($gridStart); $m += $slotMinutes) {
+            $timeSlots[] = $gridStart->copy()->addMinutes($m);
+        }
+
+        $grid = [];
+        $selectedLessons = collect($selectedDay['lessons'] ?? []);
+        foreach ($selectedLessons as $lesson) {
+            /** @var Lesson $lesson */
+            if (! $lesson->scheduled_start_at) {
+                continue;
+            }
+            $key = $lesson->scheduled_start_at->format('H:i');
+            $room = (int) ($lesson->classroom_number ?? 0);
+            if ($room <= 0) {
+                continue;
+            }
+            $grid[$key][$room] = $lesson;
+        }
+
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
@@ -97,6 +117,8 @@ class TimetableController extends Controller
             'slotMinutes' => $slotMinutes,
             'slotCount' => $slotCount,
             'rooms' => $rooms,
+            'timeSlots' => $timeSlots,
+            'grid' => $grid,
         ]);
     }
 

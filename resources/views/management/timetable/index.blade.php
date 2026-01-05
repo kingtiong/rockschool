@@ -8,15 +8,15 @@
             <div class="flex items-center gap-3">
                 <a
                     class="underline text-sm text-indigo-600 hover:text-indigo-900"
-                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->subDays(7)->toDateString(), 'day' => $selectedDayName, 'branch_id' => $selectedBranch?->id]) }}"
+                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->subWeeks(8)->toDateString(), 'day' => $selectedDayName, 'branch_id' => $selectedBranch?->id]) }}"
                 >
-                    {{ __('Prev week') }}
+                    {{ __('Prev 8 weeks') }}
                 </a>
                 <a
                     class="underline text-sm text-indigo-600 hover:text-indigo-900"
-                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->addDays(7)->toDateString(), 'day' => $selectedDayName, 'branch_id' => $selectedBranch?->id]) }}"
+                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->addWeeks(8)->toDateString(), 'day' => $selectedDayName, 'branch_id' => $selectedBranch?->id]) }}"
                 >
-                    {{ __('Next week') }}
+                    {{ __('Next 8 weeks') }}
                 </a>
             </div>
 
@@ -39,11 +39,15 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="text-sm text-gray-600">
-                <span class="font-medium text-gray-800">{{ ucfirst($selectedDayName) }}</span>
-                {{ __('schedule (8 weeks):') }}
-                <span class="font-medium text-gray-800">{{ $selectedDate->toDateString() }}</span>
+                @if($selectedDayName === 'all')
+                    <span class="font-medium text-gray-800">{{ __('All days') }}</span>
+                @else
+                    <span class="font-medium text-gray-800">{{ ucfirst($selectedDayName) }}</span>
+                @endif
+                {{ __('(8 weeks):') }}
+                <span class="font-medium text-gray-800">{{ $weekStart->toDateString() }}</span>
                 {{ __('to') }}
-                <span class="font-medium text-gray-800">{{ $dates[count($dates) - 1]->toDateString() }}</span>
+                <span class="font-medium text-gray-800">{{ $weekStart->copy()->addWeeks(8)->subDay()->toDateString() }}</span>
             </div>
 
             <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
@@ -59,6 +63,7 @@
                 <div>
                     <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Day') }}</div>
                     <select name="day" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                        <option value="all" @selected($selectedDayName === 'all')>{{ __('All days') }}</option>
                         <option value="monday" @selected($selectedDayName === 'monday')>{{ __('Monday') }}</option>
                         <option value="tuesday" @selected($selectedDayName === 'tuesday')>{{ __('Tuesday') }}</option>
                         <option value="wednesday" @selected($selectedDayName === 'wednesday')>{{ __('Wednesday') }}</option>
@@ -140,7 +145,11 @@
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <div class="text-lg font-semibold text-gray-800">
-                                {{ ucfirst($selectedDayName) }}
+                                @if($selectedDayName === 'all')
+                                    {{ __('All days') }}
+                                @else
+                                    {{ ucfirst($selectedDayName) }}
+                                @endif
                             </div>
                             <div class="text-sm text-gray-500">
                                 {{ __('Scroll right to see 8 weeks.') }}

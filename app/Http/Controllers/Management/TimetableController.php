@@ -24,7 +24,7 @@ class TimetableController extends Controller
     {
         $validated = $request->validate([
             'date' => ['nullable', 'date'],
-            'day' => ['nullable', 'string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
+            'day' => ['nullable', 'string', 'in:all,monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
@@ -33,9 +33,8 @@ class TimetableController extends Controller
             : now()->startOfDay();
 
         $weekStart = $date->copy()->startOfWeek(Carbon::MONDAY);
-        $weekEnd = $weekStart->copy()->addDays(7);
 
-        $dayName = $validated['day'] ?? 'monday';
+        $dayName = $validated['day'] ?? 'all';
         $dayOffsets = [
             'monday' => 0,
             'tuesday' => 1,
@@ -45,10 +44,26 @@ class TimetableController extends Controller
             'saturday' => 5,
             'sunday' => 6,
         ];
-        $selectedDate = $weekStart->copy()->addDays($dayOffsets[$dayName] ?? 0);
         $horizonWeeks = 8;
-        $rangeStart = $selectedDate->copy()->startOfDay();
-        $rangeEnd = $selectedDate->copy()->addWeeks($horizonWeeks)->startOfDay();
+
+        $rangeStart = $weekStart->copy()->startOfDay();
+        $rangeEnd = $weekStart->copy()->addWeeks($horizonWeeks)->startOfDay();
+        $dates = [];
+
+        if ($dayName === 'all') {
+            // 8 weeks x 7 days = 56 dates on one page.
+            $rangeEnd = $weekStart->copy()->addWeeks($horizonWeeks)->startOfDay();
+            for ($d = 0; $d < ($horizonWeeks * 7); $d++) {
+                $dates[] = $weekStart->copy()->addDays($d);
+            }
+        } else {
+            $selectedDate = $weekStart->copy()->addDays($dayOffsets[$dayName] ?? 0);
+            $rangeStart = $selectedDate->copy()->startOfDay();
+            $rangeEnd = $selectedDate->copy()->addWeeks($horizonWeeks)->startOfDay();
+            for ($w = 0; $w < $horizonWeeks; $w++) {
+                $dates[] = $selectedDate->copy()->addWeeks($w);
+            }
+        }
 
         $branches = Branch::query()->where('active', true)->orderBy('name')->get();
         $selectedBranchId = $validated['branch_id'] ?? $branches->first()?->id;
@@ -59,15 +74,18 @@ class TimetableController extends Controller
             ->where('scheduled_start_at', '<', $rangeEnd)
             ->where('scheduled_end_at', '>', $rangeStart)
             ->when($selectedBranch, function ($q) use ($selectedBranch) {
-                $q->whereHas('cycle.enrollment', function ($q2) use ($selectedBranch) {
-                    $q2->where('branch_id', $selectedBranch->id);
+                // Include "orphan" lessons (no cycle) so they still appear.
+                $q->where(function ($qq) use ($selectedBranch) {
+                    $qq->whereHas('cycle.enrollment', function ($q2) use ($selectedBranch) {
+                        $q2->where('branch_id', $selectedBranch->id);
+                    })->orWhereNull('cycle_id');
                 });
             })
             ->orderBy('scheduled_start_at')
             ->get();
 
-        $gridStart = $selectedDate->copy()->setTime(8, 0);
-        $gridEnd = $selectedDate->copy()->setTime(22, 0);
+        $gridStart = $rangeStart->copy()->setTime(8, 0);
+        $gridEnd = $rangeStart->copy()->setTime(22, 0);
         $slotMinutes = 30;
         $slotCount = (int) (($gridEnd->diffInMinutes($gridStart)) / $slotMinutes);
 
@@ -91,11 +109,6 @@ class TimetableController extends Controller
             $timeSlots[] = $gridStart->copy()->addMinutes($m);
         }
 
-        $dates = [];
-        for ($w = 0; $w < $horizonWeeks; $w++) {
-            $dates[] = $selectedDate->copy()->addWeeks($w);
-        }
-
         // Map lessons by [date][time][room] so the view can render fast.
         $grid = [];
         foreach ($lessons as $lesson) {
@@ -105,20 +118,22 @@ class TimetableController extends Controller
             }
 
             $dateKey = $lesson->scheduled_start_at->toDateString();
-            $timeKey = $lesson->scheduled_start_at->format('H:i');
-            $room = (int) ($lesson->classroom_number ?? 0);
-            if ($room <= 0) {
-                continue;
-            }
+            // Place lesson in the nearest 30-min grid slot (floor).
+            $slotStart = $lesson->scheduled_start_at->copy()->second(0);
+            $slotStart->minute($slotStart->minute < 30 ? 0 : 30);
+            $timeKey = $slotStart->format('H:i');
+
+            // Default missing room to Room 1 so it still appears.
+            $room = (int) ($lesson->classroom_number ?? 1);
+            $room = max(1, $room);
+
             $grid[$dateKey][$timeKey][$room] = $lesson;
         }
 
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
-            'weekEnd' => $weekEnd,
             'selectedDayName' => $dayName,
-            'selectedDate' => $selectedDate,
             'horizonWeeks' => $horizonWeeks,
             'dates' => $dates,
             'branches' => $branches,

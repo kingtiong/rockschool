@@ -46,6 +46,11 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:management')->prefix('management')->name('management.')->group(function () {
         Route::get('/timetable', [ManagementTimetableController::class, 'index'])->name('timetable.index');
+        Route::get('/timetable/slots/create', [ManagementTimetableController::class, 'createSlot'])->name('timetable.slots.create');
+        Route::post('/timetable/slots', [ManagementTimetableController::class, 'storeSlot'])->name('timetable.slots.store');
+        Route::post('/timetable/lessons/{lesson}/postpone', [ManagementTimetableController::class, 'postpone'])->name('timetable.lessons.postpone');
+        Route::get('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'editReschedule'])->name('timetable.lessons.reschedule.edit');
+        Route::put('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'updateReschedule'])->name('timetable.lessons.reschedule.update');
 
         Route::get('/branches', [ManagementBranchController::class, 'index'])->name('branches.index');
         Route::get('/branches/create', [ManagementBranchController::class, 'create'])->name('branches.create');

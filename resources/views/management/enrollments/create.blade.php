@@ -13,6 +13,17 @@
                         @csrf
 
                         <div>
+                            <x-input-label for="branch_id" :value="__('Branch (optional)')" />
+                            <select id="branch_id" name="branch_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">{{ __('No branch') }}</option>
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}" @selected(old('branch_id') == $b->id)>{{ $b->name }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('branch_id')" class="mt-2" />
+                        </div>
+
+                        <div>
                             <x-input-label for="student_id" :value="__('Student')" />
                             <select id="student_id" name="student_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                 <option value="">{{ __('Select student') }}</option>

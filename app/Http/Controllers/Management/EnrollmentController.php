@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Enrollment;
 use App\Models\FeePlan;
 use App\Models\User;
@@ -16,7 +17,7 @@ class EnrollmentController extends Controller
     {
         return view('management.enrollments.index', [
             'enrollments' => Enrollment::query()
-                ->with(['student', 'teacher', 'feePlan'])
+                ->with(['branch', 'student', 'teacher', 'feePlan'])
                 ->orderByDesc('id')
                 ->get(),
         ]);
@@ -25,6 +26,7 @@ class EnrollmentController extends Controller
     public function create(): View
     {
         return view('management.enrollments.create', [
+            'branches' => Branch::query()->where('active', true)->orderBy('name')->get(),
             'students' => User::query()->where('role', 'student')->orderBy('name')->get(),
             'teachers' => User::query()->where('role', 'teacher')->orderBy('name')->get(),
             'feePlans' => FeePlan::query()->where('active', true)->orderBy('name')->get(),
@@ -34,6 +36,7 @@ class EnrollmentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'student_id' => ['required', 'integer', 'exists:users,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'fee_plan_id' => ['required', 'integer', 'exists:fee_plans,id'],
@@ -60,6 +63,7 @@ class EnrollmentController extends Controller
         }
 
         Enrollment::create([
+            'branch_id' => $validated['branch_id'] ? (int) $validated['branch_id'] : null,
             'student_id' => (int) $validated['student_id'],
             'teacher_id' => $validated['teacher_id'] ? (int) $validated['teacher_id'] : null,
             'fee_plan_id' => (int) $validated['fee_plan_id'],

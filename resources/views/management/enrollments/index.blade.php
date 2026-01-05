@@ -18,6 +18,7 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Student') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Teacher') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Plan') }}</th>
@@ -29,6 +30,7 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @forelse($enrollments as $enrollment)
                                     <tr>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->branch?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $enrollment->student?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->teacher?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->feePlan?->name ?? '—' }}</td>
@@ -42,7 +44,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No enrollments yet.') }}</td>
+                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No enrollments yet.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

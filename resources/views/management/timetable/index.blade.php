@@ -67,7 +67,7 @@
                         @endif
                     </div>
                     @if($firstLessonTimeKey)
-                        <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="#time-{{ str_replace(':','-',$firstLessonTimeKey) }}">
+                        <a id="jump-to-first" class="underline text-sm text-indigo-600 hover:text-indigo-900" href="#time-{{ str_replace(':','-',$firstLessonTimeKey) }}">
                             {{ __('Jump to first class time') }}
                         </a>
                     @endif
@@ -187,7 +187,7 @@
                         </div>
                     </div>
 
-                    <div class="overflow-auto max-h-[70vh] border border-gray-200 rounded-md">
+                    <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px;">
                         <div class="min-w-[1200px]">
                             <table class="w-full border-separate border-spacing-0">
                                 <thead>
@@ -220,7 +220,9 @@
                                         @php($timeKey = $t->format('H:i'))
                                         <tr id="time-{{ str_replace(':','-',$timeKey) }}">
                                             <td class="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-2 text-xs text-gray-600 whitespace-nowrap">
-                                                {{ $t->format('g:i A') }}
+                                                <div class="font-medium text-gray-700">
+                                                    {{ $t->format('H:i') }}–{{ $t->copy()->addMinutes($slotMinutes)->format('H:i') }}
+                                                </div>
                                             </td>
                                             @foreach($dates as $d)
                                                 @php($dateKey = $d->toDateString())
@@ -244,6 +246,8 @@
                                                                     <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
                                                                 </div>
                                                             </div>
+                                                        @else
+                                                            <div class="text-xs text-gray-300 select-none">{{ __('Available') }}</div>
                                                         @endif
                                                     </td>
                                                 @endforeach
@@ -259,4 +263,24 @@
         </div>
     </div>
 </x-app-layout>
+
+<script>
+  // Ensure "Jump to first class time" scrolls inside the grid box.
+  document.addEventListener('DOMContentLoaded', function () {
+    var link = document.getElementById('jump-to-first');
+    var grid = document.getElementById('timetable-grid');
+    if (!link || !grid) return;
+
+    link.addEventListener('click', function (e) {
+      var hash = link.getAttribute('href');
+      if (!hash || hash.charAt(0) !== '#') return;
+      var row = document.querySelector(hash);
+      if (!row) return;
+      e.preventDefault();
+      // Scroll the grid so the row is visible near the top.
+      var top = row.offsetTop;
+      grid.scrollTop = Math.max(0, top - 80);
+    });
+  });
+</script>
 

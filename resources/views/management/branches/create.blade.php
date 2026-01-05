@@ -18,6 +18,12 @@
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
                         </div>
 
+                        <div>
+                            <x-input-label for="classrooms_count" :value="__('Classrooms available')" />
+                            <x-text-input id="classrooms_count" name="classrooms_count" type="number" min="1" max="50" class="block mt-1 w-full" :value="old('classrooms_count', 1)" required />
+                            <x-input-error :messages="$errors->get('classrooms_count')" class="mt-2" />
+                        </div>
+
                         <div class="flex items-center gap-2">
                             <input id="active" name="active" type="checkbox" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" @checked(old('active', true)) />
                             <label for="active" class="text-sm text-gray-700">{{ __('Active') }}</label>

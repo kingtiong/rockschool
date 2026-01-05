@@ -27,11 +27,13 @@ class BranchController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:branches,name'],
             'active' => ['nullable', 'boolean'],
+            'classrooms_count' => ['required', 'integer', 'min:1', 'max:50'],
         ]);
 
         Branch::create([
             'name' => $validated['name'],
             'active' => (bool) ($validated['active'] ?? false),
+            'classrooms_count' => (int) $validated['classrooms_count'],
         ]);
 
         return redirect()->route('management.branches.index');
@@ -49,11 +51,13 @@ class BranchController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:branches,name,'.$branch->id],
             'active' => ['nullable', 'boolean'],
+            'classrooms_count' => ['required', 'integer', 'min:1', 'max:50'],
         ]);
 
         $branch->update([
             'name' => $validated['name'],
             'active' => (bool) ($validated['active'] ?? false),
+            'classrooms_count' => (int) $validated['classrooms_count'],
         ]);
 
         return redirect()->route('management.branches.index');

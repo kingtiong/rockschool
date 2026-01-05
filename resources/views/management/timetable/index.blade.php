@@ -8,13 +8,13 @@
             <div class="flex items-center gap-3">
                 <a
                     class="underline text-sm text-indigo-600 hover:text-indigo-900"
-                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->subDays(7)->toDateString()]) }}"
+                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->subDays(7)->toDateString(), 'day' => $selectedDayName, 'branch_id' => $selectedBranch?->id]) }}"
                 >
                     {{ __('Prev week') }}
                 </a>
                 <a
                     class="underline text-sm text-indigo-600 hover:text-indigo-900"
-                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->addDays(7)->toDateString()]) }}"
+                    href="{{ route('management.timetable.index', ['date' => $weekStart->copy()->addDays(7)->toDateString(), 'day' => $selectedDayName, 'branch_id' => $selectedBranch?->id]) }}"
                 >
                     {{ __('Next week') }}
                 </a>
@@ -27,6 +27,10 @@
                     value="{{ $date->toDateString() }}"
                     class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
                 />
+                <input type="hidden" name="day" value="{{ $selectedDayName }}" />
+                @if($selectedBranch)
+                    <input type="hidden" name="branch_id" value="{{ $selectedBranch->id }}" />
+                @endif
                 <x-primary-button>{{ __('Go') }}</x-primary-button>
             </form>
         </div>
@@ -40,12 +44,28 @@
                 <span class="font-medium text-gray-800">{{ $weekEnd->copy()->subDay()->toDateString() }}</span>
             </div>
 
+            <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
+                <input type="hidden" name="date" value="{{ $weekStart->toDateString() }}" />
+                <input type="hidden" name="day" value="{{ $selectedDayName }}" />
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</div>
+                    <select name="branch_id" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                        @foreach($branches as $b)
+                            <option value="{{ $b->id }}" @selected($selectedBranch?->id === $b->id)>{{ $b->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="pt-5">
+                    <x-primary-button>{{ __('Change') }}</x-primary-button>
+                </div>
+            </form>
+
             <div class="flex flex-wrap items-center gap-3">
                 @foreach($days as $d)
                     @php($dayKey = strtolower($d['date']->format('l')))
                     <a
                         class="px-3 py-1 rounded-full text-sm {{ $selectedDayName === $dayKey ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
-                        href="{{ route('management.timetable.index', ['date' => $weekStart->toDateString(), 'day' => $dayKey]) }}"
+                        href="{{ route('management.timetable.index', ['date' => $weekStart->toDateString(), 'day' => $dayKey, 'branch_id' => $selectedBranch?->id]) }}"
                     >
                         {{ $d['date']->format('D') }}
                     </a>
@@ -64,62 +84,55 @@
                                 {{ $day['date']->toDateString() }}
                             </div>
                         </div>
-                        <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.slots.create', ['date' => $day['date']->toDateString()]) }}">
+                        <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.slots.create', ['date' => $day['date']->toDateString(), 'branch_id' => $selectedBranch?->id]) }}">
                             {{ __('Add slot') }}
                         </a>
                     </div>
 
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Time') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Student') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Teacher') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Progress') }}</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
-                                    <th class="px-4 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @forelse($day['lessons'] as $lesson)
-                                    <tr>
-                                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                                            <div class="font-medium text-gray-800">{{ $lesson->scheduled_start_at->format('g:i A') }} – {{ $lesson->scheduled_end_at->format('g:i A') }}</div>
-                                            <div class="text-gray-500">{{ $lesson->minutes }} {{ __('mins') }}</div>
-                                        </td>
-                                        <td class="px-4 py-3 text-sm text-gray-800 font-medium whitespace-nowrap">{{ $lesson->student?->name ?? '—' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{{ $lesson->teacher?->name ?? '—' }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                                            {{ $lesson->sequence_in_cycle ?? '—' }}/{{ $lesson->cycle_size ?? '—' }}
-                                        </td>
-                                        <td class="px-4 py-3 text-sm whitespace-nowrap"><x-status-badge :status="$lesson->status" /></td>
-                                        <td class="px-4 py-3 text-right whitespace-nowrap">
-                                            <div class="flex items-center justify-end gap-3">
-                                                <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and push the remaining lessons to next week?') }}')">
-                                                    @csrf
-                                                    <button type="submit" class="underline text-sm text-amber-700 hover:text-amber-900">
-                                                        {{ __('Postpone') }}
-                                                    </button>
-                                                </form>
-                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">
-                                                    {{ __('Change teacher') }}
-                                                </a>
-                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">
-                                                    {{ __('Reschedule') }}
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">
-                                            {{ __('No lessons.') }}
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                        <div class="min-w-[900px]">
+                            <div class="grid gap-px bg-gray-200" style="grid-template-columns: 90px repeat({{ count($rooms) }}, minmax(180px, 1fr));">
+                                <div class="bg-white px-2 py-2 text-xs font-medium text-gray-500 uppercase">{{ __('Time') }}</div>
+                                @foreach($rooms as $room)
+                                    <div class="bg-white px-3 py-2 text-xs font-medium text-gray-500 uppercase">{{ __('Room') }} {{ $room }}</div>
+                                @endforeach
+
+                                @for($s = 0; $s <= $slotCount; $s++)
+                                    @php($t = $gridStart->copy()->addMinutes($s * $slotMinutes))
+                                    <div class="bg-white px-2 py-2 text-xs text-gray-600 whitespace-nowrap">
+                                        {{ $t->format('g:i A') }}
+                                    </div>
+                                    @foreach($rooms as $room)
+                                        @php
+                                            $lesson = collect($day['lessons'])->first(function ($l) use ($t, $room) {
+                                                return (int) ($l->classroom_number ?? 0) === (int) $room
+                                                    && $l->scheduled_start_at->format('H:i') === $t->format('H:i');
+                                            });
+                                        @endphp
+                                        <div class="bg-white px-2 py-2 min-h-[44px]">
+                                            @if($lesson)
+                                                <div class="rounded-md border border-gray-200 p-2 bg-indigo-50">
+                                                    <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
+                                                    <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
+                                                    <div class="text-xs text-gray-600">
+                                                        {{ $lesson->minutes }}{{ __('m') }} · {{ $lesson->sequence_in_cycle ?? '—' }}/{{ $lesson->cycle_size ?? '—' }}
+                                                    </div>
+                                                    <div class="mt-1 flex flex-wrap items-center gap-2">
+                                                        <x-status-badge :status="$lesson->status" />
+                                                        <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and push the remaining lessons to next week?') }}')">
+                                                            @csrf
+                                                            <button type="submit" class="underline text-xs text-amber-700 hover:text-amber-900">{{ __('Postpone') }}</button>
+                                                        </form>
+                                                        <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Teacher') }}</a>
+                                                        <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                @endfor
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

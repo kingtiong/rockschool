@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cycle;
+use App\Models\Branch;
 use App\Models\Enrollment;
 use App\Models\FeePlan;
 use App\Models\Lesson;
@@ -21,6 +22,12 @@ class ManagementTimetableTest extends TestCase
             'role' => 'management',
         ]);
 
+        Branch::create([
+            'name' => 'Branch A',
+            'active' => true,
+            'classrooms_count' => 2,
+        ]);
+
         $this->actingAs($management)
             ->get('/management/timetable')
             ->assertStatus(200);
@@ -30,8 +37,14 @@ class ManagementTimetableTest extends TestCase
     {
         $management = User::factory()->create(['role' => 'management']);
 
+        $branch = Branch::create([
+            'name' => 'Branch A',
+            'active' => true,
+            'classrooms_count' => 2,
+        ]);
+
         $this->actingAs($management)
-            ->get('/management/timetable?date=2026-01-05&day=tuesday')
+            ->get('/management/timetable?date=2026-01-05&day=tuesday&branch_id='.$branch->id)
             ->assertStatus(200);
     }
 
@@ -41,8 +54,14 @@ class ManagementTimetableTest extends TestCase
             'role' => 'management',
         ]);
 
+        $branch = Branch::create([
+            'name' => 'Branch A',
+            'active' => true,
+            'classrooms_count' => 3,
+        ]);
+
         $this->actingAs($management)
-            ->get('/management/timetable/slots/create?date=2026-01-05')
+            ->get('/management/timetable/slots/create?date=2026-01-05&branch_id='.$branch->id)
             ->assertStatus(200);
     }
 
@@ -51,6 +70,12 @@ class ManagementTimetableTest extends TestCase
         $management = User::factory()->create(['role' => 'management']);
         $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
+
+        $branch = Branch::create([
+            'name' => 'Branch A',
+            'active' => true,
+            'classrooms_count' => 2,
+        ]);
 
         $plan = FeePlan::create([
             'name' => 'Test Plan',
@@ -62,6 +87,7 @@ class ManagementTimetableTest extends TestCase
         ]);
 
         $enrollment = Enrollment::create([
+            'branch_id' => $branch->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
             'fee_plan_id' => $plan->id,
@@ -88,6 +114,7 @@ class ManagementTimetableTest extends TestCase
             'cycle_id' => $cycle->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
+            'classroom_number' => 1,
             'scheduled_start_at' => $start1,
             'scheduled_end_at' => $start1->copy()->addMinutes(60),
             'minutes' => 60,
@@ -100,6 +127,7 @@ class ManagementTimetableTest extends TestCase
             'cycle_id' => $cycle->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
+            'classroom_number' => 1,
             'scheduled_start_at' => $start2,
             'scheduled_end_at' => $start2->copy()->addMinutes(60),
             'minutes' => 60,
@@ -130,6 +158,12 @@ class ManagementTimetableTest extends TestCase
         $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
 
+        $branch = Branch::create([
+            'name' => 'Branch A',
+            'active' => true,
+            'classrooms_count' => 2,
+        ]);
+
         $plan = FeePlan::create([
             'name' => 'Test Plan 2',
             'cycle_fee_cents' => 30000,
@@ -140,6 +174,7 @@ class ManagementTimetableTest extends TestCase
         ]);
 
         $enrollment = Enrollment::create([
+            'branch_id' => $branch->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
             'fee_plan_id' => $plan->id,
@@ -166,6 +201,7 @@ class ManagementTimetableTest extends TestCase
             'cycle_id' => $cycle->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
+            'classroom_number' => 1,
             'scheduled_start_at' => $start1,
             'scheduled_end_at' => $start1->copy()->addMinutes(60),
             'minutes' => 60,
@@ -178,6 +214,7 @@ class ManagementTimetableTest extends TestCase
             'cycle_id' => $cycle->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
+            'classroom_number' => 1,
             'scheduled_start_at' => $start2,
             'scheduled_end_at' => $start2->copy()->addMinutes(60),
             'minutes' => 60,

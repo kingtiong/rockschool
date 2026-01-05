@@ -14,6 +14,7 @@ class Branch extends Model
     protected $fillable = [
         'name',
         'active',
+        'classrooms_count',
     ];
 
     protected $casts = [

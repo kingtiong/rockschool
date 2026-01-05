@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\Lesson;
@@ -23,6 +24,7 @@ class TimetableController extends Controller
         $validated = $request->validate([
             'date' => ['nullable', 'date'],
             'day' => ['nullable', 'string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
         $date = isset($validated['date'])
@@ -44,10 +46,19 @@ class TimetableController extends Controller
         ];
         $selectedDate = $weekStart->copy()->addDays($dayOffsets[$dayName] ?? 0);
 
+        $branches = Branch::query()->where('active', true)->orderBy('name')->get();
+        $selectedBranchId = $validated['branch_id'] ?? $branches->first()?->id;
+        $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
+
         $lessons = Lesson::query()
-            ->with(['teacher', 'student'])
+            ->with(['teacher', 'student', 'cycle.enrollment.branch'])
             ->where('scheduled_start_at', '<', $weekEnd)
             ->where('scheduled_end_at', '>', $weekStart)
+            ->when($selectedBranch, function ($q) use ($selectedBranch) {
+                $q->whereHas('cycle.enrollment', function ($q2) use ($selectedBranch) {
+                    $q2->where('branch_id', $selectedBranch->id);
+                });
+            })
             ->orderBy('scheduled_start_at')
             ->get();
 
@@ -64,6 +75,14 @@ class TimetableController extends Controller
 
         $selectedDay = collect($days)->first(fn (array $d) => $d['date']->toDateString() === $selectedDate->toDateString());
 
+        $gridStart = $selectedDate->copy()->setTime(8, 0);
+        $gridEnd = $selectedDate->copy()->setTime(22, 0);
+        $slotMinutes = 30;
+        $slotCount = (int) (($gridEnd->diffInMinutes($gridStart)) / $slotMinutes);
+
+        $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
+        $rooms = range(1, $roomsCount);
+
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
@@ -71,6 +90,13 @@ class TimetableController extends Controller
             'days' => $days,
             'selectedDayName' => $dayName,
             'selectedDay' => $selectedDay,
+            'branches' => $branches,
+            'selectedBranch' => $selectedBranch,
+            'gridStart' => $gridStart,
+            'gridEnd' => $gridEnd,
+            'slotMinutes' => $slotMinutes,
+            'slotCount' => $slotCount,
+            'rooms' => $rooms,
         ]);
     }
 
@@ -78,14 +104,21 @@ class TimetableController extends Controller
     {
         $validated = $request->validate([
             'date' => ['nullable', 'date'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
         ]);
 
         $date = isset($validated['date'])
             ? Carbon::parse($validated['date'])->startOfDay()
             : now()->startOfDay();
 
+        $branches = Branch::query()->where('active', true)->orderBy('name')->get();
+        $branchId = $validated['branch_id'] ?? $branches->first()?->id;
+        $selectedBranch = $branchId ? $branches->firstWhere('id', (int) $branchId) : null;
+
         return view('management.timetable.create-slot', [
             'date' => $date,
+            'branches' => $branches,
+            'branch' => $selectedBranch,
             'students' => User::query()->where('role', 'student')->orderBy('name')->get(),
             'teachers' => User::query()->where('role', 'teacher')->orderBy('name')->get(),
         ]);
@@ -94,6 +127,8 @@ class TimetableController extends Controller
     public function storeSlot(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'classroom_number' => ['required', 'integer', 'min:1', 'max:50'],
             'student_id' => ['required', 'integer', 'exists:users,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'start_date' => ['required', 'date'],
@@ -121,6 +156,11 @@ class TimetableController extends Controller
         abort_unless($enrollment !== null && $enrollment->feePlan !== null, 422, 'Student has no active enrollment.');
 
         $plan = $enrollment->feePlan;
+        $branchId = $validated['branch_id'] ? (int) $validated['branch_id'] : ($enrollment->branch_id ? (int) $enrollment->branch_id : null);
+        $branch = $branchId ? Branch::find($branchId) : null;
+        if ($branch) {
+            abort_unless((int) $validated['classroom_number'] <= max(1, (int) $branch->classrooms_count), 422);
+        }
 
         $minutes = (int) $validated['minutes_per_lesson'];
         if ((int) $plan->minutes_per_lesson_default === 45) {
@@ -132,11 +172,14 @@ class TimetableController extends Controller
         $startAt = Carbon::parse($validated['start_date'].' '.$validated['start_time']);
         $intervalWeeks = (int) $validated['interval_weeks'];
 
-        DB::transaction(function () use ($enrollment, $plan, $teacherId, $minutes, $startAt, $intervalWeeks): void {
+        $classroomNumber = (int) $validated['classroom_number'];
+
+        DB::transaction(function () use ($enrollment, $plan, $teacherId, $minutes, $startAt, $intervalWeeks, $branchId, $classroomNumber): void {
             // Keep enrollment in sync with management slot configuration.
             $enrollment->update([
                 'teacher_id' => $teacherId,
                 'minutes_per_lesson' => $minutes,
+                'branch_id' => $branchId,
             ]);
 
             $lessonsPerCycle = (int) $plan->lessons_per_cycle;
@@ -166,6 +209,7 @@ class TimetableController extends Controller
                     'cycle_id' => $cycle->id,
                     'student_id' => $enrollment->student_id,
                     'teacher_id' => $teacherId,
+                    'classroom_number' => $classroomNumber,
                     'scheduled_start_at' => $lessonStart,
                     'scheduled_end_at' => $lessonStart->copy()->addMinutes($minutes),
                     'minutes' => $minutes,

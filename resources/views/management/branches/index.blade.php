@@ -19,6 +19,7 @@
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Name') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Classrooms') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
                                     <th class="px-4 py-3"></th>
                                 </tr>
@@ -27,6 +28,7 @@
                                 @forelse($branches as $branch)
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $branch->name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $branch->classrooms_count ?? 1 }}</td>
                                         <td class="px-4 py-3 text-sm">
                                             @if($branch->active)
                                                 <x-status-badge status="active" />
@@ -51,7 +53,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="3" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No branches yet.') }}</td>
+                                        <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No branches yet.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

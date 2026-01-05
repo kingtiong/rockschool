@@ -13,6 +13,27 @@
                         @csrf
 
                         <div>
+                            <x-input-label for="branch_id" :value="__('Branch')" />
+                            <select id="branch_id" name="branch_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}" @selected(old('branch_id', $branch?->id) == $b->id)>{{ $b->name }} ({{ $b->classrooms_count ?? 1 }} {{ __('rooms') }})</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('branch_id')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="classroom_number" :value="__('Classroom')" />
+                            <select id="classroom_number" name="classroom_number" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                @php($rooms = max(1, (int) ($branch?->classrooms_count ?? 1)))
+                                @for($i = 1; $i <= $rooms; $i++)
+                                    <option value="{{ $i }}" @selected(old('classroom_number', 1) == $i)>{{ __('Room') }} {{ $i }}</option>
+                                @endfor
+                            </select>
+                            <x-input-error :messages="$errors->get('classroom_number')" class="mt-2" />
+                        </div>
+
+                        <div>
                             <x-input-label for="student_id" :value="__('Student')" />
                             <select id="student_id" name="student_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
                                 <option value="">{{ __('Select student') }}</option>

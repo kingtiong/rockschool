@@ -27,6 +27,7 @@ class Lesson extends Model
         'cycle_id',
         'student_id',
         'teacher_id',
+        'classroom_number',
         'scheduled_start_at',
         'scheduled_end_at',
         'minutes',

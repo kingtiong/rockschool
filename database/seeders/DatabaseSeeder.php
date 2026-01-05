@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
         $branch = Branch::create([
             'name' => 'Main Branch',
             'active' => true,
+            'classrooms_count' => 3,
         ]);
 
         // Fee plans (RM -> cents)

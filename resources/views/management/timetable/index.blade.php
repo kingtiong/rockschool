@@ -102,6 +102,9 @@
                                                         {{ __('Postpone') }}
                                                     </button>
                                                 </form>
+                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">
+                                                    {{ __('Change teacher') }}
+                                                </a>
                                                 <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">
                                                     {{ __('Reschedule') }}
                                                 </a>

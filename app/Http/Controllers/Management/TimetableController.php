@@ -7,6 +7,8 @@ use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\Lesson;
 use App\Models\RescheduleRequest;
+use App\Models\TeacherEarning;
+use App\Models\TeacherShare;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -272,6 +274,88 @@ class TimetableController extends Controller
 
         return redirect()->route('management.timetable.index', [
             'date' => $requestedStartAt->toDateString(),
+        ]);
+    }
+
+    public function editTeacher(Request $request, Lesson $lesson): View
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        return view('management.timetable.change-teacher', [
+            'lesson' => $lesson->load(['student', 'teacher']),
+            'teachers' => User::query()->where('role', 'teacher')->orderBy('name')->get(),
+        ]);
+    }
+
+    public function updateTeacher(Request $request, Lesson $lesson): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        $validated = $request->validate([
+            'teacher_id' => ['required', 'integer', 'exists:users,id'],
+            'reason' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $teacher = User::findOrFail((int) $validated['teacher_id']);
+        abort_unless($teacher->role === 'teacher', 422);
+
+        $lesson->loadMissing('cycle');
+
+        DB::transaction(function () use ($lesson, $teacher, $user, $validated): void {
+            // Audit trail (best-effort): reuse reschedule_requests table with "change" type.
+            RescheduleRequest::create([
+                'lesson_id' => $lesson->id,
+                'requested_by_user_id' => $user->id,
+                'type' => RescheduleRequest::TYPE_CHANGE,
+                'requested_start_at' => null,
+                'reason' => $validated['reason'] ?? 'Management changed teacher',
+                'status' => RescheduleRequest::STATUS_AUTO_APPLIED,
+                'decided_by_user_id' => $user->id,
+                'decided_at' => now(),
+            ]);
+
+            $lesson->update([
+                'teacher_id' => $teacher->id,
+            ]);
+
+            $earning = TeacherEarning::query()->where('lesson_id', $lesson->id)->first();
+            if (! $earning) {
+                return;
+            }
+
+            abort_unless($earning->status === TeacherEarning::STATUS_UNPAID, 422, 'Cannot change teacher after payout.');
+
+            $cycle = $lesson->cycle;
+            if (! $cycle || $cycle->cycle_minutes_total <= 0) {
+                $earning->update([
+                    'teacher_id' => $teacher->id,
+                    'amount_cents' => 0,
+                    'calculated_at' => now(),
+                ]);
+                return;
+            }
+
+            $share = TeacherShare::query()
+                ->where('teacher_id', $teacher->id)
+                ->whereNull('effective_to')
+                ->latest('id')
+                ->first();
+
+            $percent = (int) ($share?->percent ?? 0);
+            $lessonFeeCents = (int) round(($cycle->cycle_fee_cents * $lesson->minutes) / $cycle->cycle_minutes_total);
+            $earningCents = (int) round($lessonFeeCents * ($percent / 100));
+
+            $earning->update([
+                'teacher_id' => $teacher->id,
+                'amount_cents' => max(0, $earningCents),
+                'calculated_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('management.timetable.index', [
+            'date' => $lesson->scheduled_start_at->toDateString(),
         ]);
     }
 }

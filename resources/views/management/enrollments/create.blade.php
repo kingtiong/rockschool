@@ -75,6 +75,12 @@
                             <x-input-error :messages="$errors->get('started_on')" class="mt-2" />
                         </div>
 
+                        <div>
+                            <x-input-label for="preferred_start_time" :value="__('Preferred time (optional)')" />
+                            <x-text-input id="preferred_start_time" name="preferred_start_time" type="time" class="block mt-1 w-full" :value="old('preferred_start_time')" />
+                            <x-input-error :messages="$errors->get('preferred_start_time')" class="mt-2" />
+                        </div>
+
                         <div class="flex items-center justify-end gap-3">
                             <a href="{{ route('management.enrollments.index') }}" class="text-sm text-gray-600 underline hover:text-gray-900">{{ __('Back') }}</a>
                             <x-primary-button>{{ __('Create') }}</x-primary-button>

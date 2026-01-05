@@ -52,6 +52,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/timetable/lessons/{lesson}/postpone', [ManagementTimetableController::class, 'postpone'])->name('timetable.lessons.postpone');
         Route::get('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'editReschedule'])->name('timetable.lessons.reschedule.edit');
         Route::put('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'updateReschedule'])->name('timetable.lessons.reschedule.update');
+        Route::get('/timetable/lessons/{lesson}/teacher', [ManagementTimetableController::class, 'editTeacher'])->name('timetable.lessons.teacher.edit');
+        Route::put('/timetable/lessons/{lesson}/teacher', [ManagementTimetableController::class, 'updateTeacher'])->name('timetable.lessons.teacher.update');
 
         Route::get('/users', [ManagementUserController::class, 'index'])->name('users.index');
         Route::get('/users/students/create', [ManagementUserController::class, 'createStudent'])->name('users.students.create');
@@ -66,6 +68,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/branches/{branch}', [ManagementBranchController::class, 'destroy'])->name('branches.destroy');
 
         Route::get('/fee-plans', [ManagementFeePlanController::class, 'index'])->name('fee-plans.index');
+        Route::get('/fee-plans/create', [ManagementFeePlanController::class, 'create'])->name('fee-plans.create');
+        Route::post('/fee-plans', [ManagementFeePlanController::class, 'store'])->name('fee-plans.store');
         Route::get('/fee-plans/{feePlan}/edit', [ManagementFeePlanController::class, 'edit'])->name('fee-plans.edit');
         Route::put('/fee-plans/{feePlan}', [ManagementFeePlanController::class, 'update'])->name('fee-plans.update');
 

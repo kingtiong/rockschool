@@ -17,6 +17,34 @@ class FeePlanController extends Controller
         ]);
     }
 
+    public function create(): View
+    {
+        return view('management.fee-plans.create');
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:fee_plans,name'],
+            'cycle_fee_rm' => ['required', 'numeric', 'min:0'],
+            'lessons_per_cycle' => ['required', 'integer', 'min:1', 'max:12'],
+            'minutes_per_lesson_default' => ['required', 'integer', 'min:15', 'max:180'],
+            'allow_half_hour' => ['nullable'],
+            'active' => ['nullable'],
+        ]);
+
+        FeePlan::create([
+            'name' => $validated['name'],
+            'cycle_fee_cents' => (int) round(((float) $validated['cycle_fee_rm']) * 100),
+            'lessons_per_cycle' => (int) $validated['lessons_per_cycle'],
+            'minutes_per_lesson_default' => (int) $validated['minutes_per_lesson_default'],
+            'allow_half_hour' => (bool) ($validated['allow_half_hour'] ?? false),
+            'active' => (bool) ($validated['active'] ?? false),
+        ]);
+
+        return redirect()->route('management.fee-plans.index');
+    }
+
     public function edit(FeePlan $feePlan): View
     {
         return view('management.fee-plans.edit', [
@@ -27,7 +55,7 @@ class FeePlanController extends Controller
     public function update(Request $request, FeePlan $feePlan): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', 'unique:fee_plans,name,'.$feePlan->id],
             'cycle_fee_rm' => ['required', 'numeric', 'min:0'],
             'lessons_per_cycle' => ['required', 'integer', 'min:1', 'max:12'],
             'minutes_per_lesson_default' => ['required', 'integer', 'min:15', 'max:180'],

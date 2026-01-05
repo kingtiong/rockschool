@@ -42,6 +42,7 @@ class EnrollmentController extends Controller
             'fee_plan_id' => ['required', 'integer', 'exists:fee_plans,id'],
             'minutes_per_lesson' => ['required', 'integer', 'in:30,45,60'],
             'started_on' => ['nullable', 'date'],
+            'preferred_start_time' => ['nullable', 'date_format:H:i'],
         ]);
 
         $student = User::findOrFail($validated['student_id']);
@@ -70,6 +71,7 @@ class EnrollmentController extends Controller
             'minutes_per_lesson' => $minutes,
             'status' => 'active',
             'started_on' => $validated['started_on'] ?? null,
+            'preferred_start_time' => $validated['preferred_start_time'] ?? null,
         ]);
 
         return redirect()->route('management.enrollments.index');

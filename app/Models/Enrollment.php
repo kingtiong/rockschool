@@ -20,6 +20,7 @@ class Enrollment extends Model
         'minutes_per_lesson',
         'status',
         'started_on',
+        'preferred_start_time',
     ];
 
     protected $casts = [

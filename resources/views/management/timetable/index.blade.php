@@ -46,7 +46,6 @@
 
             <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="date" value="{{ $weekStart->toDateString() }}" />
-                <input type="hidden" name="day" value="{{ $selectedDayName }}" />
                 <div>
                     <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</div>
                     <select name="branch_id" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
@@ -55,22 +54,22 @@
                         @endforeach
                     </select>
                 </div>
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Day') }}</div>
+                    <select name="day" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                        <option value="monday" @selected($selectedDayName === 'monday')>{{ __('Monday') }}</option>
+                        <option value="tuesday" @selected($selectedDayName === 'tuesday')>{{ __('Tuesday') }}</option>
+                        <option value="wednesday" @selected($selectedDayName === 'wednesday')>{{ __('Wednesday') }}</option>
+                        <option value="thursday" @selected($selectedDayName === 'thursday')>{{ __('Thursday') }}</option>
+                        <option value="friday" @selected($selectedDayName === 'friday')>{{ __('Friday') }}</option>
+                        <option value="saturday" @selected($selectedDayName === 'saturday')>{{ __('Saturday') }}</option>
+                        <option value="sunday" @selected($selectedDayName === 'sunday')>{{ __('Sunday') }}</option>
+                    </select>
+                </div>
                 <div class="pt-5">
                     <x-primary-button>{{ __('Change') }}</x-primary-button>
                 </div>
             </form>
-
-            <div class="flex flex-wrap items-center gap-3">
-                @foreach($days as $d)
-                    @php($dayKey = strtolower($d['date']->format('l')))
-                    <a
-                        class="px-3 py-1 rounded-full text-sm {{ $selectedDayName === $dayKey ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
-                        href="{{ route('management.timetable.index', ['date' => $weekStart->toDateString(), 'day' => $dayKey, 'branch_id' => $selectedBranch?->id]) }}"
-                    >
-                        {{ $d['date']->format('D') }}
-                    </a>
-                @endforeach
-            </div>
 
             @php($day = $selectedDay)
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -97,18 +96,12 @@
                                     <div class="bg-white px-3 py-2 text-xs font-medium text-gray-500 uppercase">{{ __('Room') }} {{ $room }}</div>
                                 @endforeach
 
-                                @for($s = 0; $s <= $slotCount; $s++)
-                                    @php($t = $gridStart->copy()->addMinutes($s * $slotMinutes))
+                                @foreach($timeSlots as $t)
                                     <div class="bg-white px-2 py-2 text-xs text-gray-600 whitespace-nowrap">
                                         {{ $t->format('g:i A') }}
                                     </div>
                                     @foreach($rooms as $room)
-                                        @php
-                                            $lesson = collect($day['lessons'])->first(function ($l) use ($t, $room) {
-                                                return (int) ($l->classroom_number ?? 0) === (int) $room
-                                                    && $l->scheduled_start_at->format('H:i') === $t->format('H:i');
-                                            });
-                                        @endphp
+                                        @php($lesson = $grid[$t->format('H:i')][$room] ?? null)
                                         <div class="bg-white px-2 py-2 min-h-[44px]">
                                             @if($lesson)
                                                 <div class="rounded-md border border-gray-200 p-2 bg-indigo-50">
@@ -130,7 +123,7 @@
                                             @endif
                                         </div>
                                     @endforeach
-                                @endfor
+                                @endforeach
                             </div>
                         </div>
                     </div>

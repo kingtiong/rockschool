@@ -18,6 +18,7 @@ class Enrollment extends Model
         'teacher_id',
         'fee_plan_id',
         'minutes_per_lesson',
+        'interval_weeks',
         'status',
         'started_on',
         'preferred_start_time',

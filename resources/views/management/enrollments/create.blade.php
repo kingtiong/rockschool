@@ -70,6 +70,15 @@
                         </div>
 
                         <div>
+                            <x-input-label for="interval_weeks" :value="__('Monthly frequency')" />
+                            <select id="interval_weeks" name="interval_weeks" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                <option value="1" @selected(old('interval_weeks', '1') == '1')>{{ __('1 month 4 times (weekly)') }}</option>
+                                <option value="2" @selected(old('interval_weeks') == '2')>{{ __('1 month 2 times (every 2 weeks)') }}</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('interval_weeks')" class="mt-2" />
+                        </div>
+
+                        <div>
                             <x-input-label for="started_on" :value="__('Started on (optional)')" />
                             <x-text-input id="started_on" name="started_on" type="date" class="block mt-1 w-full" :value="old('started_on')" />
                             <x-input-error :messages="$errors->get('started_on')" class="mt-2" />

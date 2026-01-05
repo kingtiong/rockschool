@@ -41,6 +41,7 @@ class EnrollmentController extends Controller
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'fee_plan_id' => ['required', 'integer', 'exists:fee_plans,id'],
             'minutes_per_lesson' => ['required', 'integer', 'in:30,45,60'],
+            'interval_weeks' => ['required', 'integer', 'in:1,2'],
             'started_on' => ['nullable', 'date'],
             'preferred_start_time' => ['nullable', 'date_format:H:i'],
         ]);
@@ -69,6 +70,7 @@ class EnrollmentController extends Controller
             'teacher_id' => $validated['teacher_id'] ? (int) $validated['teacher_id'] : null,
             'fee_plan_id' => (int) $validated['fee_plan_id'],
             'minutes_per_lesson' => $minutes,
+            'interval_weeks' => (int) $validated['interval_weeks'],
             'status' => 'active',
             'started_on' => $validated['started_on'] ?? null,
             'preferred_start_time' => $validated['preferred_start_time'] ?? null,

@@ -32,6 +32,7 @@ class Cycle extends Model
         'cycle_fee_cents',
         'lessons_per_cycle',
         'minutes_per_lesson',
+        'interval_weeks',
         'cycle_minutes_total',
         'cycle_number',
         'status',

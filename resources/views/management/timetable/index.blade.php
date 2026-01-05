@@ -50,6 +50,23 @@
                 <span class="font-medium text-gray-800">{{ $weekStart->copy()->addWeeks(8)->subDay()->toDateString() }}</span>
             </div>
 
+            <div class="text-sm text-gray-600 flex flex-wrap items-center gap-4">
+                <div>
+                    <span class="font-medium text-gray-800">{{ __('Classes found:') }}</span> {{ $lessonsCount }}
+                </div>
+                @if($firstLesson && $firstLesson->scheduled_start_at)
+                    <div>
+                        <span class="font-medium text-gray-800">{{ __('First class:') }}</span>
+                        {{ $firstLesson->scheduled_start_at->format('Y-m-d g:i A') }}
+                    </div>
+                    @if($firstLessonTimeKey)
+                        <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="#time-{{ str_replace(':','-',$firstLessonTimeKey) }}">
+                            {{ __('Jump to first class time') }}
+                        </a>
+                    @endif
+                @endif
+            </div>
+
             <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="date" value="{{ $weekStart->toDateString() }}" />
                 <div>
@@ -189,7 +206,7 @@
                                     @for($i = 0; $i <= $slotCount; $i++)
                                         @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
                                         @php($timeKey = $t->format('H:i'))
-                                        <tr>
+                                        <tr id="time-{{ str_replace(':','-',$timeKey) }}">
                                             <td class="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-2 text-xs text-gray-600 whitespace-nowrap">
                                                 {{ $t->format('g:i A') }}
                                             </td>

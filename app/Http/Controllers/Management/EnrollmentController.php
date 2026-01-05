@@ -81,6 +81,9 @@ class EnrollmentController extends Controller
             // Pro-rate cycle fee by reduced lesson count when interval is 2 weeks.
             $cycleFeeCents = (int) round($baseCycleFeeCents * ($lessonsPerCycle / max(1, $defaultLessonsPerCycle)));
 
+            $time = $validated['preferred_start_time'] ?? '14:00';
+            $startsOn = $validated['started_on'] ?? now()->addDay()->toDateString();
+
             $enrollment = Enrollment::create([
                 'branch_id' => $validated['branch_id'] ? (int) $validated['branch_id'] : null,
                 'student_id' => (int) $validated['student_id'],
@@ -89,8 +92,8 @@ class EnrollmentController extends Controller
                 'minutes_per_lesson' => $minutes,
                 'interval_weeks' => $intervalWeeks,
                 'status' => 'active',
-                'started_on' => $validated['started_on'] ?? null,
-                'preferred_start_time' => $validated['preferred_start_time'] ?? null,
+                'started_on' => $startsOn,
+                'preferred_start_time' => $time,
             ]);
 
             $cycleNumber = 1;
@@ -104,29 +107,26 @@ class EnrollmentController extends Controller
                 'cycle_minutes_total' => $lessonsPerCycle * $minutes,
                 'cycle_number' => $cycleNumber,
                 'status' => Cycle::STATUS_AWAITING_STUDENT_PAYMENT,
-                'starts_on' => ($validated['started_on'] ?? now()->toDateString()),
+                'starts_on' => $startsOn,
             ]);
 
-            // Create lessons immediately when we have a date (and optional time).
-            if (! empty($validated['started_on'])) {
-                $time = $validated['preferred_start_time'] ?? '14:00';
-                $startAt = Carbon::parse($validated['started_on'].' '.$time);
+            // Create lessons immediately so the Schedule shows something right after enrollment.
+            $startAt = Carbon::parse($startsOn.' '.$time);
 
-                for ($i = 1; $i <= $lessonsPerCycle; $i++) {
-                    $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
-                    Lesson::create([
-                        'cycle_id' => $cycle->id,
-                        'student_id' => $enrollment->student_id,
-                        'teacher_id' => $enrollment->teacher_id,
-                        'classroom_number' => 1,
-                        'scheduled_start_at' => $lessonStart,
-                        'scheduled_end_at' => $lessonStart->copy()->addMinutes($minutes),
-                        'minutes' => $minutes,
-                        'status' => Lesson::STATUS_SCHEDULED,
-                        'sequence_in_cycle' => $i,
-                        'cycle_size' => $lessonsPerCycle,
-                    ]);
-                }
+            for ($i = 1; $i <= $lessonsPerCycle; $i++) {
+                $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
+                Lesson::create([
+                    'cycle_id' => $cycle->id,
+                    'student_id' => $enrollment->student_id,
+                    'teacher_id' => $enrollment->teacher_id,
+                    'classroom_number' => 1,
+                    'scheduled_start_at' => $lessonStart,
+                    'scheduled_end_at' => $lessonStart->copy()->addMinutes($minutes),
+                    'minutes' => $minutes,
+                    'status' => Lesson::STATUS_SCHEDULED,
+                    'sequence_in_cycle' => $i,
+                    'cycle_size' => $lessonsPerCycle,
+                ]);
             }
         });
 

@@ -13,6 +13,7 @@ class Enrollment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'branch_id',
         'student_id',
         'teacher_id',
         'fee_plan_id',
@@ -28,6 +29,11 @@ class Enrollment extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(User::class, 'student_id');
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function teacher(): BelongsTo

@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\Management\CycleController as ManagementCycleController;
+use App\Http\Controllers\Management\BranchController as ManagementBranchController;
 use App\Http\Controllers\Management\EnrollmentController as ManagementEnrollmentController;
 use App\Http\Controllers\Management\FeePlanController as ManagementFeePlanController;
 use App\Http\Controllers\Management\PaymentController as ManagementPaymentController;
@@ -45,6 +46,13 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:management')->prefix('management')->name('management.')->group(function () {
         Route::get('/timetable', [ManagementTimetableController::class, 'index'])->name('timetable.index');
+
+        Route::get('/branches', [ManagementBranchController::class, 'index'])->name('branches.index');
+        Route::get('/branches/create', [ManagementBranchController::class, 'create'])->name('branches.create');
+        Route::post('/branches', [ManagementBranchController::class, 'store'])->name('branches.store');
+        Route::get('/branches/{branch}/edit', [ManagementBranchController::class, 'edit'])->name('branches.edit');
+        Route::put('/branches/{branch}', [ManagementBranchController::class, 'update'])->name('branches.update');
+        Route::delete('/branches/{branch}', [ManagementBranchController::class, 'destroy'])->name('branches.destroy');
 
         Route::get('/fee-plans', [ManagementFeePlanController::class, 'index'])->name('fee-plans.index');
         Route::get('/fee-plans/{feePlan}/edit', [ManagementFeePlanController::class, 'edit'])->name('fee-plans.edit');

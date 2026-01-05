@@ -32,6 +32,9 @@
                         <x-nav-link :href="route('management.timetable.index')" :active="request()->routeIs('management.timetable.*')">
                             {{ __('Timetable') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('management.branches.index')" :active="request()->routeIs('management.branches.*')">
+                            {{ __('Branches') }}
+                        </x-nav-link>
                         <x-nav-link :href="route('management.fee-plans.index')" :active="request()->routeIs('management.fee-plans.*')">
                             {{ __('Fee Plans') }}
                         </x-nav-link>
@@ -122,6 +125,9 @@
             @if(auth()->user()->role === 'management')
                 <x-responsive-nav-link :href="route('management.timetable.index')" :active="request()->routeIs('management.timetable.*')">
                     {{ __('Timetable') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('management.branches.index')" :active="request()->routeIs('management.branches.*')">
+                    {{ __('Branches') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('management.fee-plans.index')" :active="request()->routeIs('management.fee-plans.*')">
                     {{ __('Fee Plans') }}

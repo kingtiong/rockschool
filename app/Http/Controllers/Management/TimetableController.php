@@ -66,7 +66,7 @@ class TimetableController extends Controller
         }
 
         $branches = Branch::query()->where('active', true)->orderBy('name')->get();
-        $selectedBranchId = $validated['branch_id'] ?? $branches->first()?->id;
+        $selectedBranchId = $validated['branch_id'] ?? null;
         $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
 
         $lessons = Lesson::query()

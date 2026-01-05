@@ -55,8 +55,9 @@
                 <div>
                     <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</div>
                     <select name="branch_id" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                        <option value="">{{ __('All branches') }}</option>
                         @foreach($branches as $b)
-                            <option value="{{ $b->id }}" @selected($selectedBranch?->id === $b->id)>{{ $b->name }}</option>
+                            <option value="{{ $b->id }}" @selected((string) $selectedBranch?->id === (string) $b->id)>{{ $b->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -185,7 +186,8 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($timeSlots as $t)
+                                    @for($i = 0; $i <= $slotCount; $i++)
+                                        @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
                                         @php($timeKey = $t->format('H:i'))
                                         <tr>
                                             <td class="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-2 text-xs text-gray-600 whitespace-nowrap">
@@ -218,7 +220,7 @@
                                                 @endforeach
                                             @endforeach
                                         </tr>
-                                    @endforeach
+                                    @endfor
                                 </tbody>
                             </table>
                         </div>

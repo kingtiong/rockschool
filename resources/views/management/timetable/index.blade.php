@@ -191,13 +191,17 @@
                                 @endif
                             </div>
                             <div class="text-sm text-gray-500">
-                                {{ __('Scroll right to see 8 weeks.') }}
+                                {{ __('Scroll or drag right to see all weeks. Scroll down to see times.') }}
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                {{ __('Weeks shown:') }} {{ count($dates) }} · {{ __('Rooms:') }} {{ count($rooms) }}
                             </div>
                         </div>
                     </div>
 
-                    <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px;">
-                        <div class="min-w-[1200px]">
+                    <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px; cursor: grab;">
+                        @php($minWidthPx = 90 + (count($dates) * count($rooms) * 180))
+                        <div style="min-width: {{ max(1200, $minWidthPx) }}px;">
                             @php($slotCount = $slotCount ?? 28)
                             @php($slotMinutes = $slotMinutes ?? 30)
                             <table class="w-full border-separate border-spacing-0">
@@ -280,17 +284,58 @@
   document.addEventListener('DOMContentLoaded', function () {
     var link = document.getElementById('jump-to-first');
     var grid = document.getElementById('timetable-grid');
-    if (!link || !grid) return;
+    if (!grid) return;
 
-    link.addEventListener('click', function (e) {
-      var hash = link.getAttribute('href');
-      if (!hash || hash.charAt(0) !== '#') return;
-      var row = document.querySelector(hash);
-      if (!row) return;
+    if (link) {
+      link.addEventListener('click', function (e) {
+        var hash = link.getAttribute('href');
+        if (!hash || hash.charAt(0) !== '#') return;
+        var row = document.querySelector(hash);
+        if (!row) return;
+        e.preventDefault();
+        // Scroll the grid so the row is visible near the top.
+        var top = row.offsetTop;
+        grid.scrollTop = Math.max(0, top - 80);
+      });
+    }
+
+    // Drag-to-scroll for large timetable (desktop mouse).
+    var isDown = false;
+    var startX = 0;
+    var startY = 0;
+    var scrollLeft = 0;
+    var scrollTop = 0;
+
+    grid.addEventListener('mousedown', function (e) {
+      // Ignore dragging when interacting with controls.
+      if (e.target.closest('a,button,input,select,textarea,form')) return;
+      isDown = true;
+      grid.style.cursor = 'grabbing';
+      startX = e.pageX;
+      startY = e.pageY;
+      scrollLeft = grid.scrollLeft;
+      scrollTop = grid.scrollTop;
       e.preventDefault();
-      // Scroll the grid so the row is visible near the top.
-      var top = row.offsetTop;
-      grid.scrollTop = Math.max(0, top - 80);
+    });
+
+    window.addEventListener('mouseup', function () {
+      if (!isDown) return;
+      isDown = false;
+      grid.style.cursor = 'grab';
+    });
+
+    grid.addEventListener('mouseleave', function () {
+      if (!isDown) return;
+      isDown = false;
+      grid.style.cursor = 'grab';
+    });
+
+    grid.addEventListener('mousemove', function (e) {
+      if (!isDown) return;
+      var dx = e.pageX - startX;
+      var dy = e.pageY - startY;
+      grid.scrollLeft = scrollLeft - dx;
+      grid.scrollTop = scrollTop - dy;
     });
   });
 </script>

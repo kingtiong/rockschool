@@ -112,6 +112,10 @@ class TimetableController extends Controller
         $slotMinutes = 30;
         // Number of 30-min slots between 08:00 and 22:00 is 28 (08:00..21:30 start times).
         $slotTotal = (int) (($gridEnd->diffInMinutes($gridStart)) / $slotMinutes);
+        // Safety: never allow "0 rows" in the UI.
+        if ($slotTotal <= 0) {
+            $slotTotal = 28;
+        }
 
         $roomModels = collect();
         $rooms = [];
@@ -137,8 +141,8 @@ class TimetableController extends Controller
         }
 
         $timeSlots = [];
-        for ($m = 0; $m < $gridEnd->diffInMinutes($gridStart); $m += $slotMinutes) {
-            $timeSlots[] = $gridStart->copy()->addMinutes($m);
+        for ($i = 0; $i < $slotTotal; $i++) {
+            $timeSlots[] = $gridStart->copy()->addMinutes($i * $slotMinutes);
         }
 
         // Map lessons by [date][time][room] so the view can render fast.

@@ -17,6 +17,7 @@
         .row { display: flex; justify-content: space-between; gap: 24px; }
         .title { font-size: 40px; letter-spacing: 2px; font-weight: 800; }
         .small { font-size: 12px; }
+        .logo { width: 280px; max-width: 280px; height: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th, td { padding: 10px 12px; border-bottom: 1px solid #E5E7EB; text-align: left; }
         th { background: #111827; color: white; font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
@@ -28,7 +29,10 @@
 </head>
 <body>
     <div class="row" style="align-items:flex-start;">
-        <div></div>
+        <div>
+            {{-- Place logo file here: public/images/shion-logo.png --}}
+            <img class="logo" src="{{ asset('images/shion-logo.png') }}" alt="Shion Music">
+        </div>
         <div style="text-align:right;">
             <div class="title">INVOICE</div>
             <div class="small" style="margin-top:10px; font-weight:700;">Shion Music Academy of Performing Arts</div>

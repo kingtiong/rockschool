@@ -92,6 +92,13 @@ class TimetableController extends Controller
 
         $lessons = $lessonsQuery->get();
 
+        $firstLessonTimeKey = null;
+        if ($lessons->first()?->scheduled_start_at) {
+            $slotStart = $lessons->first()->scheduled_start_at->copy()->second(0);
+            $slotStart->minute($slotStart->minute < 30 ? 0 : 30);
+            $firstLessonTimeKey = $slotStart->format('H:i');
+        }
+
         $gridStart = $rangeStart->copy()->setTime(8, 0);
         $gridEnd = $rangeStart->copy()->setTime(22, 0);
         $slotMinutes = 30;
@@ -156,6 +163,7 @@ class TimetableController extends Controller
             'timeSlots' => $timeSlots,
             'grid' => $grid,
             'lessonsCount' => $lessons->count(),
+            'firstLessonTimeKey' => $firstLessonTimeKey,
         ]);
     }
 

@@ -142,6 +142,20 @@
                             </div>
                             <div class="text-sm text-gray-500">{{ __('8 weeks timetable') }}</div>
                         </div>
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            <a
+                                class="underline text-sm text-indigo-600 hover:text-indigo-900"
+                                href="{{ route('management.timetable.slots.create', ['date' => $weekStart->toDateString(), 'branch_id' => $selectedBranch?->id]) }}"
+                            >
+                                {{ __('Add slot') }}
+                            </a>
+                            @if($firstLessonTimeKey)
+                                <a id="jump-to-first" class="underline text-sm text-indigo-600 hover:text-indigo-900" href="#time-{{ str_replace(':','-',$firstLessonTimeKey) }}">
+                                    {{ __('Jump to first class time') }}
+                                </a>
+                            @endif
+                        </div>
                     </div>
 
                     @php
@@ -155,7 +169,7 @@
                         };
                     @endphp
 
-                    <div class="overflow-auto border border-gray-200 rounded-md" style="max-height: 75vh; min-height: 520px;">
+                    <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 75vh; min-height: 520px;">
                         @php($minWidthPx = 90 + (count($dates) * count($rooms) * 160))
                         <div style="min-width: {{ max(900, $minWidthPx) }}px;">
                             <table class="w-full border-collapse">
@@ -186,7 +200,7 @@
                                         @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
                                         @php($timeKey = $t->format('H:i'))
                                         <tr>
-                                            <td class="border border-gray-200 px-2 py-2 text-sm text-gray-800 whitespace-nowrap sticky left-0 z-10 bg-white">
+                                            <td id="time-{{ str_replace(':','-',$timeKey) }}" class="border border-gray-200 px-2 py-2 text-sm text-gray-800 whitespace-nowrap sticky left-0 z-10 bg-white">
                                                 {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
                                             </td>
                                             @foreach($dates as $d)
@@ -197,6 +211,16 @@
                                                         @if($lesson)
                                                             <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
                                                             <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
+                                                            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                                <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
+                                                                <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Change teacher') }}</a>
+                                                                <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
+                                                                    @csrf
+                                                                    <button type="submit" class="underline text-xs text-red-600 hover:text-red-800">{{ __('Postpone') }}</button>
+                                                                </form>
+                                                            </div>
+                                                        @else
+                                                            <div class="text-xs text-gray-300 select-none">{{ __('Available') }}</div>
                                                         @endif
                                                     </td>
                                                 @endforeach
@@ -212,4 +236,29 @@
         </div>
     </div>
 </x-app-layout>
+
+<script>
+  // Auto-scroll to first class time, and make jump link scroll inside the grid.
+  document.addEventListener('DOMContentLoaded', function () {
+    var grid = document.getElementById('timetable-grid');
+    if (!grid) return;
+
+    var link = document.getElementById('jump-to-first');
+    var hash = link ? link.getAttribute('href') : null;
+    if (hash && hash.charAt(0) === '#') {
+      var target = document.querySelector(hash);
+      if (target) {
+        // Scroll to first lesson row on load.
+        grid.scrollTop = Math.max(0, target.offsetTop - 80);
+      }
+
+      link.addEventListener('click', function (e) {
+        var t = document.querySelector(hash);
+        if (!t) return;
+        e.preventDefault();
+        grid.scrollTop = Math.max(0, t.offsetTop - 80);
+      });
+    }
+  });
+</script>
 

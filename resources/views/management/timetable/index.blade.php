@@ -156,6 +156,9 @@
                             @endif
                         </div>
                     </div>
+                    <div class="text-xs text-gray-500">
+                        {{ __('Showing time slots 8:00–22:00 (30 minutes). If you don’t see classes, click “Jump to first class time”.') }}
+                    </div>
 
                     @php
                         $slotTotal = $slotTotal ?? 28;
@@ -198,8 +201,8 @@
                                     @for($i = 0; $i < $slotTotal; $i++)
                                         @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
                                         @php($timeKey = $t->format('H:i'))
-                                        <tr>
-                                            <td id="time-{{ str_replace(':','-',$timeKey) }}" class="border border-gray-200 px-2 py-2 text-sm text-gray-800 whitespace-nowrap sticky left-0 z-10 bg-white">
+                                        <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}">
+                                            <td id="time-{{ str_replace(':','-',$timeKey) }}" class="border border-gray-200 px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 z-10 bg-white">
                                                 {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
                                             </td>
                                             @foreach($dates as $d)
@@ -219,7 +222,7 @@
                                                                 </form>
                                                             </div>
                                                         @else
-                                                            <div class="text-xs text-gray-300 select-none">{{ __('Available') }}</div>
+                                                            <div class="text-xs text-gray-400 select-none">{{ __('Available') }}</div>
                                                         @endif
                                                     </td>
                                                 @endforeach

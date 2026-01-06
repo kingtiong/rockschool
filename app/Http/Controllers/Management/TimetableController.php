@@ -127,6 +127,14 @@ class TimetableController extends Controller
             $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
             $rooms = range(1, $roomsCount);
         }
+        // Safety: if existing lessons use higher room numbers, show them too.
+        $maxLessonRoom = (int) $lessons->max(function (Lesson $l) {
+            return max(1, (int) ($l->classroom_number ?? 1));
+        });
+        $currentMaxRoom = (int) (count($rooms) > 0 ? max($rooms) : 1);
+        if ($maxLessonRoom > $currentMaxRoom) {
+            $rooms = range(1, $maxLessonRoom);
+        }
 
         $timeSlots = [];
         for ($m = 0; $m < $gridEnd->diffInMinutes($gridStart); $m += $slotMinutes) {

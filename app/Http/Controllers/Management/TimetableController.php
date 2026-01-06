@@ -68,9 +68,16 @@ class TimetableController extends Controller
         $branches = Branch::query()->where('active', true)->orderBy('name')->get();
         $selectedBranchId = $validated['branch_id'] ?? null;
         $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
-        // Timetable is branch-specific: default to first active branch.
+
+        // Timetable is branch-specific: default to a branch that actually has lessons.
         if (! $selectedBranch) {
-            $selectedBranch = $branches->first();
+            $selectedBranch = Branch::query()
+                ->where('active', true)
+                ->whereHas('enrollments.cycles.lessons')
+                ->orderBy('name')
+                ->first();
+
+            $selectedBranch = $selectedBranch ?: $branches->first();
         }
 
         $lessonsQuery = Lesson::query()

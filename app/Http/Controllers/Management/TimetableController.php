@@ -69,7 +69,7 @@ class TimetableController extends Controller
         $selectedBranchId = $validated['branch_id'] ?? null;
         $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
 
-        $lessons = Lesson::query()
+        $lessonsQuery = Lesson::query()
             ->with(['teacher', 'student', 'cycle.enrollment.branch'])
             ->where('scheduled_start_at', '<', $rangeEnd)
             ->where('scheduled_end_at', '>', $rangeStart)
@@ -82,19 +82,15 @@ class TimetableController extends Controller
                 });
             })
             ->orderBy('scheduled_start_at')
-            ->get();
+        ;
 
-        $firstLesson = $lessons->first();
-        $firstLessonTimeKey = null;
-        $firstLessonDateKey = null;
-        $firstLessonRoom = null;
-        if ($firstLesson?->scheduled_start_at) {
-            $slotStart = $firstLesson->scheduled_start_at->copy()->second(0);
-            $slotStart->minute($slotStart->minute < 30 ? 0 : 30);
-            $firstLessonTimeKey = $slotStart->format('H:i');
-            $firstLessonDateKey = $firstLesson->scheduled_start_at->toDateString();
-            $firstLessonRoom = max(1, (int) ($firstLesson->classroom_number ?? 1));
+        // If a specific weekday is selected, only show lessons that fall on those 8 specific dates.
+        if ($dayName !== 'all') {
+            $allowedDates = collect($dates)->map(fn (Carbon $d) => $d->toDateString())->all();
+            $lessonsQuery->whereIn(DB::raw('DATE(scheduled_start_at)'), $allowedDates);
         }
+
+        $lessons = $lessonsQuery->get();
 
         $gridStart = $rangeStart->copy()->setTime(8, 0);
         $gridEnd = $rangeStart->copy()->setTime(22, 0);
@@ -143,11 +139,6 @@ class TimetableController extends Controller
             $grid[$dateKey][$timeKey][$room] = $lesson;
         }
 
-        $firstCellHit = false;
-        if ($firstLessonDateKey && $firstLessonTimeKey && $firstLessonRoom) {
-            $firstCellHit = isset($grid[$firstLessonDateKey][$firstLessonTimeKey][$firstLessonRoom]);
-        }
-
         return view('management.timetable.index', [
             'date' => $date,
             'weekStart' => $weekStart,
@@ -165,13 +156,6 @@ class TimetableController extends Controller
             'timeSlots' => $timeSlots,
             'grid' => $grid,
             'lessonsCount' => $lessons->count(),
-            'firstLesson' => $firstLesson,
-            'firstLessonTimeKey' => $firstLessonTimeKey,
-            'firstLessonDateKey' => $firstLessonDateKey,
-            'firstLessonRoom' => $firstLessonRoom,
-            'firstCellHit' => $firstCellHit,
-            // Safety: show a simple list in the UI to verify data.
-            'lessonsPreview' => $lessons->take(200),
         ]);
     }
 

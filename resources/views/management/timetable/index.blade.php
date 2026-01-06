@@ -38,56 +38,6 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="text-sm text-gray-600">
-                @if($selectedDayName === 'all')
-                    <span class="font-medium text-gray-800">{{ __('All days') }}</span>
-                @else
-                    <span class="font-medium text-gray-800">{{ ucfirst($selectedDayName) }}</span>
-                @endif
-                {{ __('(8 weeks):') }}
-                <span class="font-medium text-gray-800">{{ $weekStart->toDateString() }}</span>
-                {{ __('to') }}
-                <span class="font-medium text-gray-800">{{ $weekStart->copy()->addWeeks(8)->subDay()->toDateString() }}</span>
-            </div>
-
-            <div class="text-sm text-gray-600 flex flex-wrap items-center gap-4">
-                <div>
-                    <span class="font-medium text-gray-800">{{ __('Classes found:') }}</span> {{ $lessonsCount }}
-                </div>
-                @if($firstLesson && $firstLesson->scheduled_start_at)
-                    <div>
-                        <span class="font-medium text-gray-800">{{ __('First class:') }}</span>
-                        {{ $firstLesson->scheduled_start_at->format('Y-m-d g:i A') }}
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        {{ __('First cell match:') }}
-                        {{ $firstCellHit ? __('YES') : __('NO') }}
-                        @if($firstLessonDateKey && $firstLessonTimeKey && $firstLessonRoom)
-                            ({{ $firstLessonDateKey }} {{ $firstLessonTimeKey }} · {{ __('Room') }} {{ $firstLessonRoom }})
-                        @endif
-                    </div>
-                    @if($firstLessonTimeKey)
-                        <a id="jump-to-first" class="underline text-sm text-indigo-600 hover:text-indigo-900" href="#time-{{ str_replace(':','-',$firstLessonTimeKey) }}">
-                            {{ __('Jump to first class time') }}
-                        </a>
-                    @endif
-                @endif
-            </div>
-            @if($lessonsCount > 0)
-                <div class="text-xs text-gray-500">
-                    {{ __('Tip: your first class is at 2:00 PM — click “Jump to first class time” or scroll inside the grid box down to 2:00 PM.') }}
-                </div>
-            @endif
-
-            <div class="text-xs text-gray-500">
-                <span class="font-medium text-gray-700">{{ __('Debug:') }}</span>
-                {{ __('slots=') }}{{ ($slotCount ?? 0) + 1 }},
-                {{ __('slotMinutes=') }}{{ $slotMinutes ?? 30 }},
-                {{ __('grid=') }}{{ isset($gridStart) ? $gridStart->format('H:i') : '—' }}–{{ isset($gridEnd) ? $gridEnd->format('H:i') : '—' }},
-                {{ __('dates=') }}{{ isset($dates) ? count($dates) : 0 }},
-                {{ __('rooms=') }}{{ isset($rooms) ? count($rooms) : 0 }}
-            </div>
-
             <form method="GET" action="{{ route('management.timetable.index') }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="date" value="{{ $weekStart->toDateString() }}" />
                 <div>
@@ -190,12 +140,7 @@
                                     {{ ucfirst($selectedDayName) }}
                                 @endif
                             </div>
-                            <div class="text-sm text-gray-500">
-                                {{ __('Scroll or drag right to see all weeks. Scroll down to see times.') }}
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                {{ __('Weeks shown:') }} {{ count($dates) }} · {{ __('Rooms:') }} {{ count($rooms) }}
-                            </div>
+                            <div class="text-sm text-gray-500">{{ __('8 weeks timetable') }}</div>
                         </div>
                     </div>
 
@@ -210,13 +155,13 @@
                         };
                     @endphp
 
-                    <div class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px;">
+                    <div class="overflow-auto border border-gray-200 rounded-md" style="max-height: 75vh; min-height: 520px;">
                         @php($minWidthPx = 90 + (count($dates) * count($rooms) * 160))
                         <div style="min-width: {{ max(900, $minWidthPx) }}px;">
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-gray-50">
-                                        <th class="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[90px]">
+                                        <th class="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[110px]">
                                             {{ __('Time') }}
                                         </th>
                                         @foreach($dates as $d)
@@ -262,112 +207,9 @@
                             </table>
                         </div>
                     </div>
-
-                    <div class="mt-6">
-                        <div class="text-sm font-medium text-gray-800 mb-2">{{ __('Lessons in this view (sanity check)') }}</div>
-                        <div class="text-xs text-gray-500 mb-3">
-                            {{ __('If you see rows here but not in the grid, it means the grid is not rendering/scrolling properly in the browser.') }}
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Date/time') }}</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Room') }}</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Student') }}</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Teacher') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @forelse($lessonsPreview as $l)
-                                        <tr>
-                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->scheduled_start_at?->format('Y-m-d g:i A') ?? '—' }}</td>
-                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->classroom_number ?? 1 }}</td>
-                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->student?->name ?? '—' }}</td>
-                                            <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $l->teacher?->name ?? '—' }}</td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-6 text-center text-sm text-gray-500">{{ __('No lessons in this range.') }}</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 </x-app-layout>
-
-<script>
-  // Ensure "Jump to first class time" scrolls inside the grid box.
-  document.addEventListener('DOMContentLoaded', function () {
-    var link = document.getElementById('jump-to-first');
-    var grid = document.getElementById('timetable-grid');
-    if (!grid) return;
-
-    // Auto-scroll to first class time on load.
-    var jump = grid.getAttribute('data-jump-target');
-    if (jump && jump.charAt(0) === '#') {
-      var row0 = document.querySelector(jump);
-      if (row0) {
-        grid.scrollTop = Math.max(0, row0.offsetTop - 80);
-      }
-    }
-
-    if (link) {
-      link.addEventListener('click', function (e) {
-        var hash = link.getAttribute('href');
-        if (!hash || hash.charAt(0) !== '#') return;
-        var row = document.querySelector(hash);
-        if (!row) return;
-        e.preventDefault();
-        // Scroll the grid so the row is visible near the top.
-        var top = row.offsetTop;
-        grid.scrollTop = Math.max(0, top - 80);
-      });
-    }
-
-    // Drag-to-scroll for large timetable (desktop mouse).
-    var isDown = false;
-    var startX = 0;
-    var startY = 0;
-    var scrollLeft = 0;
-    var scrollTop = 0;
-
-    grid.addEventListener('mousedown', function (e) {
-      // Ignore dragging when interacting with controls.
-      if (e.target.closest('a,button,input,select,textarea,form')) return;
-      isDown = true;
-      grid.style.cursor = 'grabbing';
-      startX = e.pageX;
-      startY = e.pageY;
-      scrollLeft = grid.scrollLeft;
-      scrollTop = grid.scrollTop;
-      e.preventDefault();
-    });
-
-    window.addEventListener('mouseup', function () {
-      if (!isDown) return;
-      isDown = false;
-      grid.style.cursor = 'grab';
-    });
-
-    grid.addEventListener('mouseleave', function () {
-      if (!isDown) return;
-      isDown = false;
-      grid.style.cursor = 'grab';
-    });
-
-    grid.addEventListener('mousemove', function (e) {
-      if (!isDown) return;
-      var dx = e.pageX - startX;
-      var dy = e.pageY - startY;
-      grid.scrollLeft = scrollLeft - dx;
-      grid.scrollTop = scrollTop - dy;
-    });
-  });
-</script>
 

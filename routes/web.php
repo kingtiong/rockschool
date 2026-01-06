@@ -101,6 +101,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/payouts', [ManagementPayoutController::class, 'index'])->name('payouts.index');
         Route::post('/payouts/{teacher}/pay-all', [ManagementPayoutController::class, 'payAllUnpaid'])->name('payouts.pay-all');
         Route::post('/payouts/{payout}/mark-paid', [ManagementPayoutController::class, 'markPaid'])->name('payouts.mark-paid');
+        Route::get('/payouts/{payout}', [ManagementPayoutController::class, 'show'])->name('payouts.show');
+        Route::get('/payouts/{payout}/download', [ManagementPayoutController::class, 'download'])->name('payouts.download');
 
         Route::get('/reschedule-requests', [ManagementRescheduleRequestController::class, 'index'])->name('reschedule-requests.index');
         Route::post('/reschedule-requests/{rescheduleRequest}/approve', [ManagementRescheduleRequestController::class, 'approve'])->name('reschedule-requests.approve');

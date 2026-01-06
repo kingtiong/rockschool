@@ -141,6 +141,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Student') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Plan') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Amount') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Invoice') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Paid at') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Slip') }}</th>
@@ -153,6 +154,15 @@
                                         <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $payment->student?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $payment->cycle?->enrollment?->feePlan?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">RM {{ number_format($payment->amount_cents / 100, 2) }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">
+                                            @if($payment->cycle?->invoice)
+                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('invoices.show', $payment->cycle->invoice) }}">
+                                                    {{ $payment->cycle->invoice->invoice_number }}
+                                                </a>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-3 text-sm"><x-status-badge :status="$payment->status" /></td>
                                         <td class="px-4 py-3 text-sm text-gray-700">
                                             {{ $payment->paid_at ? $payment->paid_at->format('Y-m-d g:i A') : '—' }}
@@ -184,7 +194,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No payments yet.') }}</td>
+                                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No payments yet.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

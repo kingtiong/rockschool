@@ -174,6 +174,7 @@
                     <div id="timetable-grid" class="overflow-x-auto border border-gray-200 rounded-md">
                         @php($colCount = 1 + (count($dates) * count($rooms)))
                         @php($gridColsStyle = 'grid-template-columns: 110px repeat('.(count($dates) * count($rooms)).', 160px);')
+                        @php($rowH = 40)
 
                         <div style="min-width: {{ max(900, 110 + (count($dates) * count($rooms) * 160)) }}px;">
                             <div class="px-2 py-2 text-xs text-gray-500 border-b border-gray-200 bg-white">
@@ -214,28 +215,28 @@
                                             @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
                                             @php($covered = $covers[$dateKey][$timeKey][$room] ?? false)
                                             @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
-                                            <div class="border-r border-gray-100 px-2 py-2 min-h-[56px] relative overflow-visible {{ $colBg }}">
+                                            <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }}" style="min-height: {{ $rowH }}px;">
                                                 @if($lesson)
                                                     <div
-                                                        class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-2"
-                                                        style="height: calc(56px * {{ max(1, (int) $span) }} - 8px);"
+                                                        class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden"
+                                                        style="height: calc({{ $rowH }}px * {{ max(1, (int) $span) }} - 6px);"
                                                     >
-                                                        <div class="text-xs text-indigo-700 font-medium">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
-                                                        <div class="text-sm font-semibold text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
-                                                        <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
-                                                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                                            <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
-                                                            <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Change teacher') }}</a>
+                                                        <div class="text-[11px] text-indigo-700 font-medium leading-tight">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
+                                                        <div class="text-sm font-semibold text-gray-900 leading-tight">{{ $lesson->student?->name ?? '—' }}</div>
+                                                        <div class="text-[11px] text-gray-700 leading-tight">{{ $lesson->teacher?->name ?? '—' }}</div>
+                                                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                            <a class="underline text-[11px] text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
+                                                            <a class="underline text-[11px] text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Teacher') }}</a>
                                                             <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
                                                                 @csrf
-                                                                <button type="submit" class="underline text-xs text-red-700 hover:text-red-900">{{ __('Postpone') }}</button>
+                                                                <button type="submit" class="underline text-[11px] text-red-700 hover:text-red-900">{{ __('Postpone') }}</button>
                                                             </form>
                                                         </div>
                                                     </div>
                                                 @elseif($covered)
                                                     {{-- Covered by a multi-slot lesson block; keep empty so the block can span visually --}}
                                                 @else
-                                                    <div class="text-xs text-gray-400 select-none">{{ __('Available') }}</div>
+                                                    <div class="text-[11px] text-gray-400 select-none leading-tight">{{ __('Available') }}</div>
                                                 @endif
                                             </div>
                                         @endforeach

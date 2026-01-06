@@ -116,8 +116,16 @@ class TimetableController extends Controller
             $rooms = $roomModels->pluck('number')->map(fn ($n) => (int) $n)->all();
         }
         if (count($rooms) === 0) {
-            $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
-            $rooms = range(1, $roomsCount);
+            if (! $selectedBranch) {
+                // "All branches" view: show enough rooms to cover all branches.
+                $maxRoomsByBranch = (int) ($branches->max('classrooms_count') ?? 1);
+                $maxRoomNumber = (int) (Room::query()->where('active', true)->max('number') ?? 0);
+                $roomsCount = max(1, $maxRoomsByBranch, $maxRoomNumber);
+                $rooms = range(1, $roomsCount);
+            } else {
+                $roomsCount = max(1, (int) ($selectedBranch->classrooms_count ?? 1));
+                $rooms = range(1, $roomsCount);
+            }
         }
 
         $timeSlots = [];

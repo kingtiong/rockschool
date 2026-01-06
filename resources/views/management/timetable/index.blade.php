@@ -209,6 +209,11 @@
                                                     @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
                                                     <td class="border border-gray-200 px-2 py-2 align-top min-w-[140px]">
                                                         @if($lesson)
+                                                            @if(! $selectedBranch)
+                                                                <div class="text-[10px] uppercase tracking-wider text-gray-500">
+                                                                    {{ $lesson->cycle?->enrollment?->branch?->name ?? __('(No branch)') }}
+                                                                </div>
+                                                            @endif
                                                             <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
                                                             <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
                                                             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">

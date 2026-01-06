@@ -172,65 +172,59 @@
                     @endphp
 
                     <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 75vh; min-height: 520px;">
-                        @php($minWidthPx = 90 + (count($dates) * count($rooms) * 160))
-                        <div style="min-width: {{ max(900, $minWidthPx) }}px;">
-                            <table class="w-full border-collapse">
-                                <thead>
-                                    <tr class="bg-gray-50">
-                                        <th class="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[110px] sticky top-0 left-0 z-30 bg-gray-50">
-                                            {{ __('Time') }}
-                                        </th>
-                                        @foreach($dates as $d)
-                                            <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase sticky top-0 z-20 bg-gray-50" colspan="{{ count($rooms) }}">
-                                                {{ $d->format('j/n/Y') }}
-                                            </th>
+                        @php($colCount = 1 + (count($dates) * count($rooms)))
+                        @php($gridColsStyle = 'grid-template-columns: 110px repeat('.(count($dates) * count($rooms)).', 160px);')
+
+                        <div style="min-width: {{ max(900, 110 + (count($dates) * count($rooms) * 160)) }}px;">
+                            <!-- Header row: dates -->
+                            <div class="grid sticky top-0 z-30 bg-gray-50 border-b border-gray-200" style="{{ $gridColsStyle }}">
+                                <div class="border-r border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">
+                                    {{ __('Time') }}
+                                </div>
+                                @foreach($dates as $d)
+                                    @foreach($rooms as $room)
+                                        <div class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                            @if($loop->first)
+                                                <div class="font-medium text-gray-500">{{ $d->format('j/n/Y') }}</div>
+                                            @endif
+                                            <div class="text-[11px] text-gray-500">{{ __('ROOM') }} {{ $room }}</div>
+                                        </div>
+                                    @endforeach
+                                @endforeach
+                            </div>
+
+                            <!-- Body: time slots -->
+                            @for($i = 0; $i < $slotTotal; $i++)
+                                @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
+                                @php($timeKey = $t->format('H:i'))
+                                <div class="grid border-b border-gray-100 {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}" style="{{ $gridColsStyle }}">
+                                    <div id="time-{{ str_replace(':','-',$timeKey) }}" class="border-r border-gray-200 px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white">
+                                        {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
+                                    </div>
+                                    @foreach($dates as $d)
+                                        @php($dateKey = $d->toDateString())
+                                        @foreach($rooms as $room)
+                                            @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
+                                            <div class="border-r border-gray-100 px-2 py-2 min-h-[56px]">
+                                                @if($lesson)
+                                                    <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
+                                                    <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
+                                                    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                        <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
+                                                        <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Change teacher') }}</a>
+                                                        <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
+                                                            @csrf
+                                                            <button type="submit" class="underline text-xs text-red-600 hover:text-red-800">{{ __('Postpone') }}</button>
+                                                        </form>
+                                                    </div>
+                                                @else
+                                                    <div class="text-xs text-gray-400 select-none">{{ __('Available') }}</div>
+                                                @endif
+                                            </div>
                                         @endforeach
-                                    </tr>
-                                    <tr class="bg-gray-50">
-                                        <th class="border border-gray-200 px-2 py-2 sticky top-8 left-0 z-30 bg-gray-50"></th>
-                                        @foreach($dates as $d)
-                                            @foreach($rooms as $room)
-                                                <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase sticky top-8 z-20 bg-gray-50">
-                                                    {{ __('ROOM') }} {{ $room }}
-                                                </th>
-                                            @endforeach
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @for($i = 0; $i < $slotTotal; $i++)
-                                        @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
-                                        @php($timeKey = $t->format('H:i'))
-                                        <tr class="{{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}">
-                                            <td id="time-{{ str_replace(':','-',$timeKey) }}" class="border border-gray-200 px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 z-10 bg-white">
-                                                {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
-                                            </td>
-                                            @foreach($dates as $d)
-                                                @php($dateKey = $d->toDateString())
-                                                @foreach($rooms as $room)
-                                                    @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
-                                                    <td class="border border-gray-200 px-2 py-2 align-top min-w-[140px]">
-                                                        @if($lesson)
-                                                            <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
-                                                            <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
-                                                            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                                                <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
-                                                                <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Change teacher') }}</a>
-                                                                <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
-                                                                    @csrf
-                                                                    <button type="submit" class="underline text-xs text-red-600 hover:text-red-800">{{ __('Postpone') }}</button>
-                                                                </form>
-                                                            </div>
-                                                        @else
-                                                            <div class="text-xs text-gray-400 select-none">{{ __('Available') }}</div>
-                                                        @endif
-                                                    </td>
-                                                @endforeach
-                                            @endforeach
-                                        </tr>
-                                    @endfor
-                                </tbody>
-                            </table>
+                                    @endforeach
+                                </div>
+                            @endfor
                         </div>
                     </div>
                 </div>

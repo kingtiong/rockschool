@@ -128,7 +128,13 @@
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg" x-data="{
+                selectedLesson: null,
+                openActions(lesson) {
+                    this.selectedLesson = lesson;
+                    this.$dispatch('open-modal', 'lesson-actions');
+                }
+            }">
                 <div class="p-6 text-gray-900 space-y-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -174,7 +180,7 @@
                     <div id="timetable-grid" class="overflow-x-auto border border-gray-200 rounded-md">
                         @php($colCount = 1 + (count($dates) * count($rooms)))
                         @php($gridColsStyle = 'grid-template-columns: 110px repeat('.(count($dates) * count($rooms)).', 160px);')
-                        @php($rowH = 40)
+                        @php($rowH = 36)
 
                         <div style="min-width: {{ max(900, 110 + (count($dates) * count($rooms) * 160)) }}px;">
                             <div class="px-2 py-2 text-xs text-gray-500 border-b border-gray-200 bg-white">
@@ -215,27 +221,27 @@
                                             @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
                                             @php($covered = $covers[$dateKey][$timeKey][$room] ?? false)
                                             @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
-                                            <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }}" style="min-height: {{ $rowH }}px;">
+                                            <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }} {{ $covered && ! $lesson ? 'pointer-events-none' : '' }}" style="min-height: {{ $rowH }}px;">
                                                 @if($lesson)
                                                     <div
-                                                        class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden"
+                                                        class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden cursor-pointer z-20 pointer-events-auto"
                                                         style="height: calc({{ $rowH }}px * {{ max(1, (int) $span) }} - 6px);"
+                                                        @click="openActions({
+                                                            id: {{ (int) $lesson->id }},
+                                                            student: @js($lesson->student?->name ?? '—'),
+                                                            teacher: @js($lesson->teacher?->name ?? '—'),
+                                                            time: @js(($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
+                                                            rescheduleUrl: @js(route('management.timetable.lessons.reschedule.edit', $lesson)),
+                                                            teacherUrl: @js(route('management.timetable.lessons.teacher.edit', $lesson)),
+                                                            postponeUrl: @js(route('management.timetable.lessons.postpone', $lesson)),
+                                                        })"
                                                     >
                                                         <div class="text-[11px] text-indigo-700 font-medium leading-tight">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
                                                         <div class="text-sm font-semibold text-gray-900 leading-tight">{{ $lesson->student?->name ?? '—' }}</div>
                                                         <div class="text-[11px] text-gray-700 leading-tight">{{ $lesson->teacher?->name ?? '—' }}</div>
-                                                        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                                                            <a class="underline text-[11px] text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
-                                                            <a class="underline text-[11px] text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Teacher') }}</a>
-                                                            <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
-                                                                @csrf
-                                                                <button type="submit" class="underline text-[11px] text-red-700 hover:text-red-900">{{ __('Postpone') }}</button>
-                                                            </form>
-                                                        </div>
+                                                        <div class="mt-1 text-[11px] text-gray-500">{{ __('Click for actions') }}</div>
                                                     </div>
-                                                @elseif($covered)
-                                                    {{-- Covered by a multi-slot lesson block; keep empty so the block can span visually --}}
-                                                @else
+                                                @elseif(! $covered)
                                                     <div class="text-[11px] text-gray-400 select-none leading-tight">{{ __('Available') }}</div>
                                                 @endif
                                             </div>
@@ -247,6 +253,33 @@
                     </div>
                 </div>
             </div>
+
+            <x-modal name="lesson-actions" :show="false" maxWidth="md">
+                <div class="p-6 space-y-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div class="text-lg font-semibold text-gray-900">{{ __('Class actions') }}</div>
+                            <div class="text-sm text-gray-600" x-text="selectedLesson ? (selectedLesson.time + ' · ' + selectedLesson.student + ' · ' + selectedLesson.teacher) : ''"></div>
+                        </div>
+                        <button type="button" class="text-sm text-gray-500 underline" x-on:click="$dispatch('close-modal', 'lesson-actions')">{{ __('Close') }}</button>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <a class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" :href="selectedLesson?.rescheduleUrl">
+                            {{ __('Reschedule') }}
+                        </a>
+                        <a class="inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900" :href="selectedLesson?.teacherUrl">
+                            {{ __('Change teacher') }}
+                        </a>
+                        <form method="POST" :action="selectedLesson?.postponeUrl" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
+                            @csrf
+                            <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">
+                                {{ __('Postpone / Cancel') }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </x-modal>
         </div>
     </div>
 </x-app-layout>

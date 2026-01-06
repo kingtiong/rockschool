@@ -23,7 +23,7 @@ class PaymentController extends Controller
         return view('management.payments.index', [
             'invoices' => $invoices,
             'payments' => Payment::query()
-                ->with(['student', 'cycle.enrollment.feePlan', 'attachments'])
+                ->with(['student', 'cycle.enrollment.feePlan', 'cycle.invoice', 'attachments'])
                 ->orderByDesc('id')
                 ->get(),
         ]);

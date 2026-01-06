@@ -23,7 +23,12 @@
                                 @foreach($teachers as $teacher)
                                     @php $unpaid = (int) ($unpaidTotals[$teacher->id] ?? 0); @endphp
                                     <tr>
-                                        <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $teacher->name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-800 font-medium">
+                                            <div>{{ $teacher->name }}</div>
+                                            <div class="text-xs">
+                                                <a class="underline text-indigo-600 hover:text-indigo-900" href="{{ route('management.teachers.statement', $teacher) }}">{{ __('Full statement') }}</a>
+                                            </div>
+                                        </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">RM {{ number_format($unpaid / 100, 2) }}</td>
                                         <td class="px-4 py-3 text-right">
                                             @if($unpaid > 0)

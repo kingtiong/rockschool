@@ -12,6 +12,7 @@ use App\Http\Controllers\Management\PaymentController as ManagementPaymentContro
 use App\Http\Controllers\Management\PayoutController as ManagementPayoutController;
 use App\Http\Controllers\Management\RescheduleRequestController as ManagementRescheduleRequestController;
 use App\Http\Controllers\Management\AdditionalChargeController as ManagementAdditionalChargeController;
+use App\Http\Controllers\Management\TeacherStatementController as ManagementTeacherStatementController;
 use App\Http\Controllers\Management\TeacherShareController as ManagementTeacherShareController;
 use App\Http\Controllers\Management\TimetableController as ManagementTimetableController;
 use App\Http\Controllers\Management\UserController as ManagementUserController;
@@ -103,6 +104,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/payouts/{payout}/mark-paid', [ManagementPayoutController::class, 'markPaid'])->name('payouts.mark-paid');
         Route::get('/payouts/{payout}', [ManagementPayoutController::class, 'show'])->name('payouts.show');
         Route::get('/payouts/{payout}/download', [ManagementPayoutController::class, 'download'])->name('payouts.download');
+        Route::get('/teachers/{teacher}/statement', [ManagementTeacherStatementController::class, 'show'])->name('teachers.statement');
 
         Route::get('/reschedule-requests', [ManagementRescheduleRequestController::class, 'index'])->name('reschedule-requests.index');
         Route::post('/reschedule-requests/{rescheduleRequest}/approve', [ManagementRescheduleRequestController::class, 'approve'])->name('reschedule-requests.approve');

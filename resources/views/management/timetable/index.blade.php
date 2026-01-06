@@ -161,20 +161,20 @@
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-gray-50">
-                                        <th class="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[110px]">
+                                        <th class="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[110px] sticky top-0 left-0 z-30 bg-gray-50">
                                             {{ __('Time') }}
                                         </th>
                                         @foreach($dates as $d)
-                                            <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase" colspan="{{ count($rooms) }}">
+                                            <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase sticky top-0 z-20 bg-gray-50" colspan="{{ count($rooms) }}">
                                                 {{ $d->format('j/n/Y') }}
                                             </th>
                                         @endforeach
                                     </tr>
                                     <tr class="bg-gray-50">
-                                        <th class="border border-gray-200 px-2 py-2"></th>
+                                        <th class="border border-gray-200 px-2 py-2 sticky top-8 left-0 z-30 bg-gray-50"></th>
                                         @foreach($dates as $d)
                                             @foreach($rooms as $room)
-                                                <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                                <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase sticky top-8 z-20 bg-gray-50">
                                                     {{ __('ROOM') }} {{ $room }}
                                                 </th>
                                             @endforeach
@@ -186,7 +186,7 @@
                                         @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
                                         @php($timeKey = $t->format('H:i'))
                                         <tr>
-                                            <td class="border border-gray-200 px-2 py-2 text-sm text-gray-800 whitespace-nowrap">
+                                            <td class="border border-gray-200 px-2 py-2 text-sm text-gray-800 whitespace-nowrap sticky left-0 z-10 bg-white">
                                                 {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
                                             </td>
                                             @foreach($dates as $d)

@@ -30,7 +30,9 @@
                                             #{{ $cycle->cycle_number }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">
-                                            RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }}
+                                            @php($chargesCents = (int) ($cycle->additionalCharges?->sum('amount_cents') ?? 0))
+                                            @php($totalCents = (int) $cycle->cycle_fee_cents + $chargesCents)
+                                            RM {{ number_format($totalCents / 100, 2) }}
                                         </td>
                                         <td class="px-4 py-3 text-sm">
                                             <x-status-badge :status="$cycle->status" />

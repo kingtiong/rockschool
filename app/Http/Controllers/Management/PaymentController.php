@@ -14,7 +14,7 @@ class PaymentController extends Controller
     public function index(): View
     {
         $invoices = Cycle::query()
-            ->with(['enrollment.student', 'enrollment.feePlan'])
+            ->with(['enrollment.student', 'enrollment.feePlan', 'additionalCharges'])
             ->whereIn('status', [Cycle::STATUS_AWAITING_STUDENT_PAYMENT, Cycle::STATUS_PAYMENT_SUBMITTED])
             ->orderByDesc('id')
             ->get();
@@ -71,6 +71,8 @@ class PaymentController extends Controller
             'method' => ['required', 'string', 'in:cash,bank_transfer,manual'],
             'paid_note' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $cycle->loadMissing('additionalCharges', 'enrollment');
 
         $payment = Payment::query()->firstOrCreate(
             ['cycle_id' => $cycle->id],

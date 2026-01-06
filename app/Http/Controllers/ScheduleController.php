@@ -6,8 +6,7 @@ use App\Models\Branch;
 use App\Models\Cycle;
 use App\Models\Lesson;
 use App\Models\RescheduleRequest;
-use App\Models\TeacherEarning;
-use App\Models\TeacherShare;
+use App\Services\LessonCompletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,97 +58,7 @@ class ScheduleController extends Controller
             'remarks' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        DB::transaction(function () use ($lesson, $validated): void {
-            $lesson->update([
-                'status' => Lesson::STATUS_COMPLETED,
-                'completed_at' => now(),
-                'remarks' => $validated['remarks'] ?? null,
-            ]);
-
-            // Create teacher earning when possible (requires a cycle + share %).
-            if (! $lesson->cycle_id || ! $lesson->teacher_id) {
-                return;
-            }
-
-            $cycle = $lesson->cycle()->with('enrollment.feePlan')->first();
-            if (! $cycle || $cycle->cycle_minutes_total <= 0) {
-                return;
-            }
-
-            $share = TeacherShare::query()
-                ->where('teacher_id', $lesson->teacher_id)
-                ->whereNull('effective_to')
-                ->latest('id')
-                ->first();
-
-            $percent = (int) ($share?->percent ?? 0);
-            if ($percent <= 0) {
-                return;
-            }
-
-            $lessonFeeCents = (int) round(($cycle->cycle_fee_cents * $lesson->minutes) / $cycle->cycle_minutes_total);
-            $earningCents = (int) round($lessonFeeCents * ($percent / 100));
-
-            TeacherEarning::query()->firstOrCreate(
-                ['lesson_id' => $lesson->id],
-                [
-                    'teacher_id' => $lesson->teacher_id,
-                    'amount_cents' => max(0, $earningCents),
-                    'status' => TeacherEarning::STATUS_UNPAID,
-                    'calculated_at' => now(),
-                ]
-            );
-
-            // If this completes the cycle (e.g. 4/4), close it and create the next cycle.
-            $cycleLessonsDone = Lesson::query()
-                ->where('cycle_id', $cycle->id)
-                ->whereIn('status', [Lesson::STATUS_COMPLETED, Lesson::STATUS_MISSED])
-                ->count();
-
-            if ($cycleLessonsDone >= $cycle->lessons_per_cycle) {
-                $cycle->update(['status' => Cycle::STATUS_COMPLETED]);
-
-                $enrollment = $cycle->enrollment;
-                $plan = $enrollment?->feePlan;
-                if (! $enrollment || ! $plan) {
-                    return;
-                }
-
-                $nextCycleNumber = $cycle->cycle_number + 1;
-                $nextStartAt = $lesson->scheduled_start_at->copy()->addWeek();
-
-                $cycleFeeCents = (int) $plan->cycle_fee_cents;
-                if ($enrollment->minutes_per_lesson === 30 && $plan->minutes_per_lesson_default === 60 && $plan->allow_half_hour) {
-                    $cycleFeeCents = (int) round($cycleFeeCents / 2);
-                }
-
-                $next = \App\Models\Cycle::create([
-                    'enrollment_id' => $enrollment->id,
-                    'cycle_fee_cents' => $cycleFeeCents,
-                    'lessons_per_cycle' => $plan->lessons_per_cycle,
-                    'minutes_per_lesson' => $enrollment->minutes_per_lesson,
-                    'cycle_minutes_total' => $plan->lessons_per_cycle * $enrollment->minutes_per_lesson,
-                    'cycle_number' => $nextCycleNumber,
-                    'status' => \App\Models\Cycle::STATUS_AWAITING_STUDENT_PAYMENT,
-                    'starts_on' => $nextStartAt->toDateString(),
-                ]);
-
-                for ($i = 1; $i <= $next->lessons_per_cycle; $i++) {
-                    $s = $nextStartAt->copy()->addWeeks($i - 1);
-                    Lesson::create([
-                        'cycle_id' => $next->id,
-                        'student_id' => $enrollment->student_id,
-                        'teacher_id' => $enrollment->teacher_id,
-                        'scheduled_start_at' => $s,
-                        'scheduled_end_at' => $s->copy()->addMinutes($next->minutes_per_lesson),
-                        'minutes' => $next->minutes_per_lesson,
-                        'status' => Lesson::STATUS_SCHEDULED,
-                        'sequence_in_cycle' => $i,
-                        'cycle_size' => $next->lessons_per_cycle,
-                    ]);
-                }
-            }
-        });
+        app(LessonCompletionService::class)->completeLesson($lesson, $validated['remarks'] ?? null);
 
         return redirect()->route('schedule.index');
     }

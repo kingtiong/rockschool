@@ -10,6 +10,7 @@ use App\Http\Controllers\Management\FeePlanController as ManagementFeePlanContro
 use App\Http\Controllers\Management\PaymentController as ManagementPaymentController;
 use App\Http\Controllers\Management\PayoutController as ManagementPayoutController;
 use App\Http\Controllers\Management\RescheduleRequestController as ManagementRescheduleRequestController;
+use App\Http\Controllers\Management\AdditionalChargeController as ManagementAdditionalChargeController;
 use App\Http\Controllers\Management\TeacherShareController as ManagementTeacherShareController;
 use App\Http\Controllers\Management\TimetableController as ManagementTimetableController;
 use App\Http\Controllers\Management\UserController as ManagementUserController;
@@ -87,6 +88,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/payments/{payment}/approve', [ManagementPaymentController::class, 'approve'])->name('payments.approve');
         Route::post('/payments/{payment}/reject', [ManagementPaymentController::class, 'reject'])->name('payments.reject');
         Route::post('/payments/cycles/{cycle}/mark-paid', [ManagementPaymentController::class, 'markPaid'])->name('payments.cycles.mark-paid');
+        Route::post('/cycles/{cycle}/charges', [ManagementAdditionalChargeController::class, 'store'])->name('cycles.charges.store');
+        Route::delete('/charges/{additionalCharge}', [ManagementAdditionalChargeController::class, 'destroy'])->name('charges.destroy');
 
         Route::get('/teacher-shares', [ManagementTeacherShareController::class, 'index'])->name('teacher-shares.index');
         Route::post('/teacher-shares/{teacher}', [ManagementTeacherShareController::class, 'upsert'])->name('teacher-shares.upsert');

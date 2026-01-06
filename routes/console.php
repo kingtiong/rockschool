@@ -113,3 +113,27 @@ Artisan::command('rooms:backfill {--branch_id=} {--dry-run} {--force}', function
     $this->info('Done.');
     return 0;
 })->purpose('Auto-assign rooms for existing lessons');
+
+Artisan::command('earnings:release {--dry-run} {--limit=200}', function () {
+    /** @var \Illuminate\Console\Command $this */
+    $dryRun = (bool) $this->option('dry-run');
+    $limit = (int) ($this->option('limit') ?? 200);
+    $limit = max(1, min(2000, $limit));
+
+    $this->info('Releasing teacher earnings for ended lessons...');
+    if ($dryRun) {
+        $this->warn('Dry-run mode: no database updates will be made.');
+    }
+
+    $service = new \App\Services\LessonCompletionService();
+    $stats = $service->releaseDueEarnings($limit, $dryRun);
+
+    $this->line('Processed: '.$stats['processed']);
+    $this->line('Auto-completed: '.$stats['completed']);
+    $this->line('Earnings created: '.$stats['earnings_created']);
+    $this->line('Cycles completed: '.$stats['cycles_completed']);
+    $this->line('Next cycles created: '.$stats['next_cycles_created']);
+
+    $this->info('Done.');
+    return 0;
+})->purpose('Auto-complete ended lessons and create teacher earnings');

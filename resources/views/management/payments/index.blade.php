@@ -24,15 +24,58 @@
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @forelse($invoices as $cycle)
+                                    @php($chargesCents = (int) $cycle->additionalCharges->sum('amount_cents'))
+                                    @php($totalCents = (int) $cycle->cycle_fee_cents + $chargesCents)
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $cycle->enrollment?->student?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $cycle->enrollment?->feePlan?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">#{{ $cycle->cycle_number }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-700">RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">
+                                            <div>RM {{ number_format($totalCents / 100, 2) }}</div>
+                                            @if($chargesCents > 0)
+                                                <div class="text-xs text-gray-500">{{ __('Base') }}: RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }} · {{ __('Charges') }}: RM {{ number_format($chargesCents / 100, 2) }}</div>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-3 text-sm"><x-status-badge :status="$cycle->status" /></td>
                                         <td class="px-4 py-3 text-right text-sm">
                                             @if($cycle->status !== 'paid')
-                                                <form method="POST" action="{{ route('management.payments.cycles.mark-paid', $cycle) }}" class="flex flex-wrap items-center justify-end gap-2">
+                                                <div class="flex flex-col items-end gap-3">
+                                                    <form method="POST" action="{{ route('management.cycles.charges.store', $cycle) }}" class="flex flex-wrap items-center justify-end gap-2">
+                                                        @csrf
+                                                        <input
+                                                            name="description"
+                                                            type="text"
+                                                            class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
+                                                            placeholder="{{ __('Additional class / charge') }}"
+                                                            required
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            name="amount_rm"
+                                                            class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm w-24"
+                                                            placeholder="0.00"
+                                                            required
+                                                        />
+                                                        <x-primary-button>{{ __('Add charge') }}</x-primary-button>
+                                                    </form>
+
+                                                    @if($cycle->additionalCharges->count() > 0)
+                                                        <div class="text-xs text-gray-600 space-y-1">
+                                                            @foreach($cycle->additionalCharges as $ch)
+                                                                <div class="flex items-center justify-end gap-2">
+                                                                    <div>{{ $ch->description }} (RM {{ number_format($ch->amount_cents / 100, 2) }})</div>
+                                                                    <form method="POST" action="{{ route('management.charges.destroy', $ch) }}" onsubmit="return confirm('{{ __('Delete this charge?') }}')">
+                                                                        @csrf
+                                                                        @method('DELETE')
+                                                                        <button type="submit" class="underline text-red-600 hover:text-red-800">{{ __('Delete') }}</button>
+                                                                    </form>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+
+                                                    <form method="POST" action="{{ route('management.payments.cycles.mark-paid', $cycle) }}" class="flex flex-wrap items-center justify-end gap-2">
                                                     @csrf
                                                     <input
                                                         type="datetime-local"
@@ -46,7 +89,7 @@
                                                         step="0.01"
                                                         name="amount_rm"
                                                         class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm w-28"
-                                                        value="{{ number_format($cycle->cycle_fee_cents / 100, 2, '.', '') }}"
+                                                        value="{{ number_format($totalCents / 100, 2, '.', '') }}"
                                                         required
                                                     />
                                                     <select name="method" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
@@ -62,6 +105,7 @@
                                                     />
                                                     <x-primary-button>{{ __('Mark paid') }}</x-primary-button>
                                                 </form>
+                                                </div>
                                             @else
                                                 <span class="text-gray-400">—</span>
                                             @endif

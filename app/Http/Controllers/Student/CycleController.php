@@ -15,7 +15,7 @@ class CycleController extends Controller
 
         return view('student.cycles.index', [
             'cycles' => Cycle::query()
-                ->with(['enrollment.feePlan', 'lessons'])
+                ->with(['enrollment.feePlan', 'lessons', 'additionalCharges'])
                 ->whereHas('enrollment', fn ($q) => $q->where('student_id', $user->id))
                 ->orderByDesc('id')
                 ->get(),

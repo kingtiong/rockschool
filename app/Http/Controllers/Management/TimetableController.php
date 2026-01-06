@@ -99,7 +99,8 @@ class TimetableController extends Controller
         $gridStart = $rangeStart->copy()->setTime(8, 0);
         $gridEnd = $rangeStart->copy()->setTime(22, 0);
         $slotMinutes = 30;
-        $slotCount = (int) (($gridEnd->diffInMinutes($gridStart)) / $slotMinutes);
+        // Number of 30-min slots between 08:00 and 22:00 is 28 (08:00..21:30 start times).
+        $slotTotal = (int) (($gridEnd->diffInMinutes($gridStart)) / $slotMinutes);
 
         $roomModels = collect();
         $rooms = [];
@@ -117,7 +118,7 @@ class TimetableController extends Controller
         }
 
         $timeSlots = [];
-        for ($m = 0; $m <= $gridEnd->diffInMinutes($gridStart); $m += $slotMinutes) {
+        for ($m = 0; $m < $gridEnd->diffInMinutes($gridStart); $m += $slotMinutes) {
             $timeSlots[] = $gridStart->copy()->addMinutes($m);
         }
 
@@ -158,7 +159,7 @@ class TimetableController extends Controller
             'gridStart' => $gridStart,
             'gridEnd' => $gridEnd,
             'slotMinutes' => $slotMinutes,
-            'slotCount' => $slotCount,
+            'slotTotal' => $slotTotal,
             'rooms' => $rooms,
             'roomModels' => $roomModels,
             'timeSlots' => $timeSlots,

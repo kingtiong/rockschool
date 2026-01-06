@@ -199,75 +199,59 @@
                         </div>
                     </div>
 
-                    <div
-                        id="timetable-grid"
-                        class="overflow-auto border border-gray-200 rounded-md"
-                        style="max-height: 70vh; min-height: 420px; cursor: grab; scrollbar-gutter: stable;"
-                        data-jump-target="{{ $firstLessonTimeKey ? '#time-'.str_replace(':','-',$firstLessonTimeKey) : '' }}"
-                    >
-                        @php($minWidthPx = 90 + (count($dates) * count($rooms) * 180))
-                        <div style="min-width: {{ max(1200, $minWidthPx) }}px;">
-                            @php($slotCount = $slotCount ?? 28)
-                            @php($slotMinutes = $slotMinutes ?? 30)
-                            <table class="w-full border-separate border-spacing-0">
+                    @php
+                        $slotTotal = $slotTotal ?? 28;
+                        $slotMinutes = $slotMinutes ?? 30;
+                        $fmt = function (\Illuminate\Support\Carbon $c): string {
+                            $h = (int) $c->format('G'); // 0-23 without leading zero
+                            $m = (int) $c->format('i');
+                            if ($m === 0) return (string) $h;
+                            return $h.'.'.str_pad((string) $m, 2, '0', STR_PAD_LEFT);
+                        };
+                    @endphp
+
+                    <div class="overflow-auto border border-gray-200 rounded-md" style="max-height: 70vh; min-height: 420px;">
+                        @php($minWidthPx = 90 + (count($dates) * count($rooms) * 160))
+                        <div style="min-width: {{ max(900, $minWidthPx) }}px;">
+                            <table class="w-full border-collapse">
                                 <thead>
-                                    <tr>
-                                        <th class="sticky left-0 z-20 bg-white border border-gray-200 px-2 py-2 text-xs font-medium text-gray-500 uppercase w-[90px]">
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[90px]">
                                             {{ __('Time') }}
                                         </th>
                                         @foreach($dates as $d)
-                                            <th class="bg-white border border-gray-200 px-2 py-2 text-xs font-medium text-gray-500 uppercase text-center" colspan="{{ count($rooms) }}">
-                                                {{ $d->format('D, j M') }}
+                                            <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase" colspan="{{ count($rooms) }}">
+                                                {{ $d->format('j/n/Y') }}
                                             </th>
                                         @endforeach
                                     </tr>
-                                    <tr>
-                                        <th class="sticky left-0 z-20 bg-white border border-gray-200 px-2 py-2 text-xs font-medium text-gray-500 uppercase">
-                                            {{ __('') }}
-                                        </th>
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-200 px-2 py-2"></th>
                                         @foreach($dates as $d)
                                             @foreach($rooms as $room)
-                                                <th class="bg-white border border-gray-200 px-2 py-2 text-xs font-medium text-gray-500 uppercase text-center">
-                                                    {{ __('Room') }} {{ $room }}
+                                                <th class="border border-gray-200 px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                                    {{ __('ROOM') }} {{ $room }}
                                                 </th>
                                             @endforeach
                                         @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @for($i = 0; $i <= $slotCount; $i++)
+                                    @for($i = 0; $i < $slotTotal; $i++)
                                         @php($t = $gridStart->copy()->addMinutes($i * $slotMinutes))
                                         @php($timeKey = $t->format('H:i'))
-                                        <tr id="time-{{ str_replace(':','-',$timeKey) }}">
-                                            <td class="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-2 text-xs text-gray-600 whitespace-nowrap">
-                                                <div class="font-medium text-gray-700">
-                                                    {{ $t->format('H:i') }}–{{ $t->copy()->addMinutes($slotMinutes)->format('H:i') }}
-                                                </div>
+                                        <tr>
+                                            <td class="border border-gray-200 px-2 py-2 text-sm text-gray-800 whitespace-nowrap">
+                                                {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
                                             </td>
                                             @foreach($dates as $d)
                                                 @php($dateKey = $d->toDateString())
                                                 @foreach($rooms as $room)
                                                     @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
-                                                    <td class="border border-gray-200 px-2 py-2 align-top min-w-[180px]">
+                                                    <td class="border border-gray-200 px-2 py-2 align-top min-w-[140px]">
                                                         @if($lesson)
-                                                            <div class="rounded-md border border-gray-200 p-2 bg-indigo-50">
-                                                                <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
-                                                                <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
-                                                                <div class="text-xs text-gray-600">
-                                                                    {{ $lesson->minutes }}{{ __('m') }} · {{ $lesson->sequence_in_cycle ?? '—' }}/{{ $lesson->cycle_size ?? '—' }}
-                                                                </div>
-                                                                <div class="mt-1 flex flex-wrap items-center gap-2">
-                                                                    <x-status-badge :status="$lesson->status" />
-                                                                    <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and push the remaining lessons to next week?') }}')">
-                                                                        @csrf
-                                                                        <button type="submit" class="underline text-xs text-amber-700 hover:text-amber-900">{{ __('Postpone') }}</button>
-                                                                    </form>
-                                                                    <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Teacher') }}</a>
-                                                                    <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
-                                                                </div>
-                                                            </div>
-                                                        @else
-                                                            <div class="text-xs text-gray-300 select-none">{{ __('Available') }}</div>
+                                                            <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
+                                                            <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
                                                         @endif
                                                     </td>
                                                 @endforeach

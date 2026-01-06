@@ -147,6 +147,15 @@ class TimetableController extends Controller
 
         // Map lessons by [date][time][room] so the view can render fast.
         $grid = [];
+        $covers = [];
+        $spans = [];
+
+        $timeKeys = collect($timeSlots)->map(fn (Carbon $c) => $c->format('H:i'))->values()->all();
+        $timeIndexByKey = [];
+        foreach ($timeKeys as $idx => $k) {
+            $timeIndexByKey[$k] = $idx;
+        }
+
         foreach ($lessons as $lesson) {
             /** @var Lesson $lesson */
             if (! $lesson->scheduled_start_at) {
@@ -164,6 +173,22 @@ class TimetableController extends Controller
             $room = max(1, $room);
 
             $grid[$dateKey][$timeKey][$room] = $lesson;
+
+            $span = (int) ceil(max(1, (int) $lesson->minutes) / $slotMinutes);
+            $span = max(1, $span);
+            $spans[$dateKey][$timeKey][$room] = $span;
+
+            $startIdx = $timeIndexByKey[$timeKey] ?? null;
+            if ($startIdx === null) {
+                continue;
+            }
+            for ($i = 0; $i < $span; $i++) {
+                $ti = $startIdx + $i;
+                if (! isset($timeKeys[$ti])) {
+                    break;
+                }
+                $covers[$dateKey][$timeKeys[$ti]][$room] = true;
+            }
         }
 
         return view('management.timetable.index', [
@@ -182,6 +207,8 @@ class TimetableController extends Controller
             'roomModels' => $roomModels,
             'timeSlots' => $timeSlots,
             'grid' => $grid,
+            'covers' => $covers,
+            'spans' => $spans,
             'lessonsCount' => $lessons->count(),
             'firstLessonTimeKey' => $firstLessonTimeKey,
         ]);

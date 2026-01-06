@@ -171,7 +171,7 @@
                         };
                     @endphp
 
-                    <div id="timetable-grid" class="overflow-auto border border-gray-200 rounded-md" style="max-height: 75vh; min-height: 520px;">
+                    <div id="timetable-grid" class="overflow-x-auto border border-gray-200 rounded-md">
                         @php($colCount = 1 + (count($dates) * count($rooms)))
                         @php($gridColsStyle = 'grid-template-columns: 110px repeat('.(count($dates) * count($rooms)).', 160px);')
 
@@ -207,18 +207,28 @@
                                         @php($dateKey = $d->toDateString())
                                         @foreach($rooms as $room)
                                             @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
-                                            <div class="border-r border-gray-100 px-2 py-2 min-h-[56px]">
+                                            @php($covered = $covers[$dateKey][$timeKey][$room] ?? false)
+                                            @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
+                                            <div class="border-r border-gray-100 px-2 py-2 min-h-[56px] relative overflow-visible">
                                                 @if($lesson)
-                                                    <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
-                                                    <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
-                                                    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                                        <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
-                                                        <a class="underline text-xs text-indigo-600 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Change teacher') }}</a>
-                                                        <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
-                                                            @csrf
-                                                            <button type="submit" class="underline text-xs text-red-600 hover:text-red-800">{{ __('Postpone') }}</button>
-                                                        </form>
+                                                    <div
+                                                        class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-2"
+                                                        style="height: calc(56px * {{ max(1, (int) $span) }} - 8px);"
+                                                    >
+                                                        <div class="text-xs text-indigo-700 font-medium">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
+                                                        <div class="text-sm font-semibold text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
+                                                        <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
+                                                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                            <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.reschedule.edit', $lesson) }}">{{ __('Reschedule') }}</a>
+                                                            <a class="underline text-xs text-indigo-700 hover:text-indigo-900" href="{{ route('management.timetable.lessons.teacher.edit', $lesson) }}">{{ __('Change teacher') }}</a>
+                                                            <form method="POST" action="{{ route('management.timetable.lessons.postpone', $lesson) }}" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
+                                                                @csrf
+                                                                <button type="submit" class="underline text-xs text-red-700 hover:text-red-900">{{ __('Postpone') }}</button>
+                                                            </form>
+                                                        </div>
                                                     </div>
+                                                @elseif($covered)
+                                                    {{-- Covered by a multi-slot lesson block; keep empty so the block can span visually --}}
                                                 @else
                                                     <div class="text-xs text-gray-400 select-none">{{ __('Available') }}</div>
                                                 @endif

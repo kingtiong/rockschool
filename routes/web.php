@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\Management\CycleController as ManagementCycleController;
 use App\Http\Controllers\Management\BranchController as ManagementBranchController;
 use App\Http\Controllers\Management\EnrollmentController as ManagementEnrollmentController;
@@ -35,6 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/schedule/{lesson}/complete', [ScheduleController::class, 'complete'])->name('schedule.complete');
     Route::post('/schedule/{lesson}/absence', [ScheduleController::class, 'absence'])->name('schedule.absence');
     Route::post('/schedule/{lesson}/request-change', [ScheduleController::class, 'requestChange'])->name('schedule.request-change');
+
+    Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
 
     Route::middleware('role:student')->prefix('student')->name('student.')->group(function () {
         Route::get('/cycles', [StudentCycleController::class, 'index'])->name('cycles.index');

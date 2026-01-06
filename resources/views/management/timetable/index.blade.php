@@ -185,8 +185,11 @@
                                     {{ __('Time') }}
                                 </div>
                                 @foreach($dates as $d)
+                                    @php($dateKey = $d->toDateString())
+                                    @php($band = (int) ($weekBandByDate[$dateKey] ?? 0))
+                                    @php($colBg = $band === 1 ? 'bg-indigo-50/70' : 'bg-white')
                                     @foreach($rooms as $room)
-                                        <div class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                                        <div class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase {{ $colBg }}">
                                             @if($loop->first)
                                                 <div class="font-medium text-gray-500">{{ $d->format('j/n/Y') }}</div>
                                             @endif
@@ -205,11 +208,13 @@
                                     </div>
                                     @foreach($dates as $d)
                                         @php($dateKey = $d->toDateString())
+                                        @php($band = (int) ($weekBandByDate[$dateKey] ?? 0))
+                                        @php($colBg = $band === 1 ? 'bg-indigo-50/50' : '')
                                         @foreach($rooms as $room)
                                             @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
                                             @php($covered = $covers[$dateKey][$timeKey][$room] ?? false)
                                             @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
-                                            <div class="border-r border-gray-100 px-2 py-2 min-h-[56px] relative overflow-visible">
+                                            <div class="border-r border-gray-100 px-2 py-2 min-h-[56px] relative overflow-visible {{ $colBg }}">
                                                 @if($lesson)
                                                     <div
                                                         class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-2"

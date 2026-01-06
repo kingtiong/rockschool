@@ -18,6 +18,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Plan') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Cycle') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Amount') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Invoice') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
                                     <th class="px-4 py-3"></th>
                                 </tr>
@@ -34,6 +35,15 @@
                                             <div>RM {{ number_format($totalCents / 100, 2) }}</div>
                                             @if($chargesCents > 0)
                                                 <div class="text-xs text-gray-500">{{ __('Base') }}: RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }} · {{ __('Charges') }}: RM {{ number_format($chargesCents / 100, 2) }}</div>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">
+                                            @if($cycle->invoice)
+                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('invoices.show', $cycle->invoice) }}">
+                                                    {{ $cycle->invoice->invoice_number }}
+                                                </a>
+                                            @else
+                                                <span class="text-gray-400">—</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-sm"><x-status-badge :status="$cycle->status" /></td>
@@ -113,7 +123,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No invoices.') }}</td>
+                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No invoices.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

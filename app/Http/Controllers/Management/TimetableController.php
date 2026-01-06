@@ -65,6 +65,14 @@ class TimetableController extends Controller
             }
         }
 
+        // For UI: alternate week background tone (week 1/3 same, week 2/4 same...).
+        $weekBandByDate = [];
+        foreach ($dates as $d) {
+            /** @var Carbon $d */
+            $weekIndex = (int) floor($weekStart->diffInDays($d) / 7);
+            $weekBandByDate[$d->toDateString()] = $weekIndex % 2; // 0 or 1
+        }
+
         $branches = Branch::query()->where('active', true)->orderBy('name')->get();
         $selectedBranchId = $validated['branch_id'] ?? null;
         $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
@@ -197,6 +205,7 @@ class TimetableController extends Controller
             'selectedDayName' => $dayName,
             'horizonWeeks' => $horizonWeeks,
             'dates' => $dates,
+            'weekBandByDate' => $weekBandByDate,
             'branches' => $branches,
             'selectedBranch' => $selectedBranch,
             'gridStart' => $gridStart,

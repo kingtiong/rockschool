@@ -10,6 +10,7 @@ use App\Models\FeePlan;
 use App\Models\Lesson;
 use App\Models\Room;
 use App\Models\User;
+use App\Services\InvoiceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -69,7 +70,9 @@ class EnrollmentController extends Controller
             abort_unless(in_array($minutes, $feePlan->allow_half_hour ? [30, 60] : [60], true), 422);
         }
 
-        DB::transaction(function () use ($validated, $feePlan, $minutes): void {
+        $createdCycleId = null;
+
+        DB::transaction(function () use ($validated, $feePlan, $minutes, &$createdCycleId): void {
             $intervalWeeks = (int) $validated['interval_weeks'];
             $defaultLessonsPerCycle = (int) $feePlan->lessons_per_cycle;
             $lessonsPerCycle = max(1, (int) ceil($defaultLessonsPerCycle / max(1, $intervalWeeks)));
@@ -110,6 +113,7 @@ class EnrollmentController extends Controller
                 'status' => Cycle::STATUS_AWAITING_STUDENT_PAYMENT,
                 'starts_on' => $startsOn,
             ]);
+            $createdCycleId = $cycle->id;
 
             // Create lessons immediately so the Schedule shows something right after enrollment.
             $startAt = Carbon::parse($startsOn.' '.$time);
@@ -166,6 +170,18 @@ class EnrollmentController extends Controller
                 ]);
             }
         });
+
+        if ($createdCycleId) {
+            DB::afterCommit(function () use ($createdCycleId): void {
+                $cycle = Cycle::query()->with(['enrollment.student', 'enrollment.feePlan', 'additionalCharges', 'invoice'])->find($createdCycleId);
+                if (! $cycle) {
+                    return;
+                }
+                $service = app(InvoiceService::class);
+                $invoice = $service->createOrUpdateForCycle($cycle);
+                $service->sendToStudent($invoice);
+            });
+        }
 
         return redirect()->route('management.enrollments.index');
     }

@@ -58,6 +58,11 @@ class Cycle extends Model
         return $this->hasMany(AdditionalCharge::class);
     }
 
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
+
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);

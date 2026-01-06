@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cycle;
+use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class PaymentController extends Controller
     public function index(): View
     {
         $invoices = Cycle::query()
-            ->with(['enrollment.student', 'enrollment.feePlan', 'additionalCharges'])
+            ->with(['enrollment.student', 'enrollment.feePlan', 'additionalCharges', 'invoice'])
             ->whereIn('status', [Cycle::STATUS_AWAITING_STUDENT_PAYMENT, Cycle::STATUS_PAYMENT_SUBMITTED])
             ->orderByDesc('id')
             ->get();
@@ -39,6 +40,7 @@ class PaymentController extends Controller
         $payment->cycle->update([
             'status' => Cycle::STATUS_PAID,
         ]);
+        $payment->cycle->invoice()?->update(['status' => Invoice::STATUS_PAID]);
 
         return redirect()->route('management.payments.index');
     }
@@ -95,6 +97,7 @@ class PaymentController extends Controller
         ]);
 
         $cycle->update(['status' => Cycle::STATUS_PAID]);
+        $cycle->invoice()?->update(['status' => Invoice::STATUS_PAID]);
 
         return redirect()->route('management.payments.index');
     }

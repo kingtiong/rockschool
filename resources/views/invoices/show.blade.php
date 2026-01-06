@@ -30,8 +30,8 @@
 <body>
     <div class="row" style="align-items:flex-start;">
         <div>
-            {{-- Place logo file here: public/images/shion-logo.png --}}
-            <img class="logo" src="{{ asset('images/shion-logo.png') }}" alt="Shion Music">
+            {{-- Place logo file here: public/shion-logo.png --}}
+            <img class="logo" src="{{ asset('shion-logo.png') }}" alt="Shion Music">
         </div>
         <div style="text-align:right;">
             <div class="title">INVOICE</div>

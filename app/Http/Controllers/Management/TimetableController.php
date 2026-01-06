@@ -68,17 +68,18 @@ class TimetableController extends Controller
         $branches = Branch::query()->where('active', true)->orderBy('name')->get();
         $selectedBranchId = $validated['branch_id'] ?? null;
         $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
+        // Timetable is branch-specific: default to first active branch.
+        if (! $selectedBranch) {
+            $selectedBranch = $branches->first();
+        }
 
         $lessonsQuery = Lesson::query()
             ->with(['teacher', 'student', 'cycle.enrollment.branch'])
             ->where('scheduled_start_at', '<', $rangeEnd)
             ->where('scheduled_end_at', '>', $rangeStart)
             ->when($selectedBranch, function ($q) use ($selectedBranch) {
-                // Include "orphan" lessons (no cycle) so they still appear.
-                $q->where(function ($qq) use ($selectedBranch) {
-                    $qq->whereHas('cycle.enrollment', function ($q2) use ($selectedBranch) {
-                        $q2->where('branch_id', $selectedBranch->id);
-                    })->orWhereNull('cycle_id');
+                $q->whereHas('cycle.enrollment', function ($q2) use ($selectedBranch) {
+                    $q2->where('branch_id', $selectedBranch->id);
                 });
             })
             ->orderBy('scheduled_start_at')
@@ -116,16 +117,8 @@ class TimetableController extends Controller
             $rooms = $roomModels->pluck('number')->map(fn ($n) => (int) $n)->all();
         }
         if (count($rooms) === 0) {
-            if (! $selectedBranch) {
-                // "All branches" view: show enough rooms to cover all branches.
-                $maxRoomsByBranch = (int) ($branches->max('classrooms_count') ?? 1);
-                $maxRoomNumber = (int) (Room::query()->where('active', true)->max('number') ?? 0);
-                $roomsCount = max(1, $maxRoomsByBranch, $maxRoomNumber);
-                $rooms = range(1, $roomsCount);
-            } else {
-                $roomsCount = max(1, (int) ($selectedBranch->classrooms_count ?? 1));
-                $rooms = range(1, $roomsCount);
-            }
+            $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
+            $rooms = range(1, $roomsCount);
         }
 
         $timeSlots = [];

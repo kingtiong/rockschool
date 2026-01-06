@@ -43,7 +43,6 @@
                 <div>
                     <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</div>
                     <select name="branch_id" class="mt-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
-                        <option value="">{{ __('All branches') }}</option>
                         @foreach($branches as $b)
                             <option value="{{ $b->id }}" @selected((string) $selectedBranch?->id === (string) $b->id)>{{ $b->name }}</option>
                         @endforeach
@@ -209,11 +208,6 @@
                                                     @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
                                                     <td class="border border-gray-200 px-2 py-2 align-top min-w-[140px]">
                                                         @if($lesson)
-                                                            @if(! $selectedBranch)
-                                                                <div class="text-[10px] uppercase tracking-wider text-gray-500">
-                                                                    {{ $lesson->cycle?->enrollment?->branch?->name ?? __('(No branch)') }}
-                                                                </div>
-                                                            @endif
                                                             <div class="text-sm font-medium text-gray-900">{{ $lesson->student?->name ?? '—' }}</div>
                                                             <div class="text-xs text-gray-700">{{ $lesson->teacher?->name ?? '—' }}</div>
                                                             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">

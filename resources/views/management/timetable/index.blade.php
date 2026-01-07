@@ -172,9 +172,11 @@
                     @endphp
 
                     <div id="timetable-grid" class="overflow-x-auto border border-gray-200 rounded-md">
-                        @php($colCount = 1 + (count($dates) * count($rooms)))
-                        @php($gridColsStyle = 'grid-template-columns: 110px repeat('.(count($dates) * count($rooms)).', 160px);')
-                        @php($rowH = 36)
+                        @php
+                            $colCount = 1 + (count($dates) * count($rooms));
+                            $gridColsStyle = 'grid-template-columns: 110px repeat('.(count($dates) * count($rooms)).', 160px);';
+                            $rowH = 36;
+                        @endphp
 
                         <div style="min-width: {{ max(900, 110 + (count($dates) * count($rooms) * 160)) }}px;">
                             <div class="px-2 py-2 text-xs text-gray-500 border-b border-gray-200 bg-white">
@@ -186,9 +188,11 @@
                                     {{ __('Time') }}
                                 </div>
                                 @foreach($dates as $d)
-                                    @php($dateKey = $d->toDateString())
-                                    @php($band = (int) ($weekBandByDate[$dateKey] ?? 0))
-                                    @php($colBg = $band === 1 ? 'bg-indigo-50/70' : 'bg-white')
+                                    @php
+                                        $dateKey = $d->toDateString();
+                                        $band = (int) ($weekBandByDate[$dateKey] ?? 0);
+                                        $colBg = $band === 1 ? 'bg-indigo-50/70' : 'bg-white';
+                                    @endphp
                                     @foreach($rooms as $room)
                                         <div class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase {{ $colBg }}">
                                             @if($loop->first)
@@ -202,19 +206,25 @@
 
                             <!-- Body: time slots -->
                             @foreach(($timeSlots ?? []) as $i => $t)
-                                @php($timeKey = $t->format('H:i'))
+                                @php
+                                    $timeKey = $t->format('H:i');
+                                @endphp
                                 <div class="grid border-b border-gray-100 {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}" style="{{ $gridColsStyle }}">
                                     <div id="time-{{ str_replace(':','-',$timeKey) }}" class="border-r border-gray-200 px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white">
                                         {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
                                     </div>
                                     @foreach($dates as $d)
-                                        @php($dateKey = $d->toDateString())
-                                        @php($band = (int) ($weekBandByDate[$dateKey] ?? 0))
-                                        @php($colBg = $band === 1 ? 'bg-indigo-50/50' : '')
+                                        @php
+                                            $dateKey = $d->toDateString();
+                                            $band = (int) ($weekBandByDate[$dateKey] ?? 0);
+                                            $colBg = $band === 1 ? 'bg-indigo-50/50' : '';
+                                        @endphp
                                         @foreach($rooms as $room)
-                                            @php($lesson = $grid[$dateKey][$timeKey][$room] ?? null)
-                                            @php($covered = $covers[$dateKey][$timeKey][$room] ?? false)
-                                            @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
+                                            @php
+                                                $lesson = $grid[$dateKey][$timeKey][$room] ?? null;
+                                                $covered = $covers[$dateKey][$timeKey][$room] ?? false;
+                                                $span = $spans[$dateKey][$timeKey][$room] ?? 1;
+                                            @endphp
                                             <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }} {{ $covered && ! $lesson ? 'pointer-events-none' : '' }}" style="min-height: {{ $rowH }}px;">
                                                 @if($lesson)
                                                     @php

@@ -132,6 +132,7 @@
                 teachers: @js(($teachers ?? collect())->map(fn($t) => ['id' => (int) $t->id, 'name' => $t->name])->values()->all()),
                 mode: 'menu', // menu | reschedule | teacher | postpone
                 selectedLesson: null,
+                showActions: false,
                 rescheduleAt: '',
                 rescheduleReason: '',
                 teacherId: '',
@@ -143,7 +144,7 @@
                     this.rescheduleReason = '';
                     this.teacherId = lesson.teacherId || '';
                     this.teacherReason = '';
-                    this.$dispatch('open-modal', 'lesson-actions');
+                    this.showActions = true;
                 }
             }">
                 <div class="p-6 text-gray-900 space-y-4">
@@ -267,99 +268,108 @@
                 </div>
             </div>
 
-            <x-modal name="lesson-actions" :show="false" maxWidth="md">
-                <div class="p-6 space-y-4">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <div class="text-lg font-semibold text-gray-900">{{ __('Class actions') }}</div>
-                            <div class="text-sm text-gray-600" x-text="selectedLesson ? (selectedLesson.time + ' · ' + selectedLesson.student + ' · ' + selectedLesson.teacher) : ''"></div>
+            <!-- Inline modal (stays in same Alpine scope) -->
+            <div
+                x-show="showActions"
+                x-on:keydown.escape.window="showActions = false"
+                class="fixed inset-0 z-50 px-4 py-6 sm:px-0"
+                style="display: none;"
+            >
+                <div class="absolute inset-0 bg-gray-500 opacity-75" @click="showActions = false"></div>
+                <div class="relative mb-6 bg-white rounded-lg overflow-hidden shadow-xl sm:w-full sm:max-w-md sm:mx-auto">
+                    <div class="p-6 space-y-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <div class="text-lg font-semibold text-gray-900">{{ __('Class actions') }}</div>
+                                <div class="text-sm text-gray-600" x-text="selectedLesson ? (selectedLesson.time + ' · ' + selectedLesson.student + ' · ' + selectedLesson.teacher) : ''"></div>
+                            </div>
+                            <button type="button" class="text-sm text-gray-500 underline" @click="showActions = false">{{ __('Close') }}</button>
                         </div>
-                        <button type="button" class="text-sm text-gray-500 underline" x-on:click="$dispatch('close-modal', 'lesson-actions')">{{ __('Close') }}</button>
+
+                        <template x-if="mode === 'menu'">
+                            <div class="flex flex-col gap-2">
+                                <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" @click="mode='reschedule'">
+                                    {{ __('Reschedule') }}
+                                </button>
+                                <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900" @click="mode='teacher'">
+                                    {{ __('Change teacher (this class only)') }}
+                                </button>
+                                <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700" @click="mode='postpone'">
+                                    {{ __('Postpone / Cancel') }}
+                                </button>
+                            </div>
+                        </template>
+
+                        <template x-if="mode === 'reschedule'">
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('New date/time') }}</div>
+                                    <input type="datetime-local" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="rescheduleAt" required>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
+                                    <input type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="rescheduleReason">
+                                </div>
+
+                                <div class="flex items-center justify-between gap-3">
+                                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
+                                    <form method="POST" :action="selectedLesson?.rescheduleAction">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="requested_start_at" :value="rescheduleAt">
+                                        <input type="hidden" name="reason" :value="rescheduleReason">
+                                        <x-primary-button>{{ __('Save reschedule') }}</x-primary-button>
+                                    </form>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="mode === 'teacher'">
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Select teacher') }}</div>
+                                    <select class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="teacherId" required>
+                                        <option value="">{{ __('Choose teacher') }}</option>
+                                        <template x-for="t in teachers" :key="t.id">
+                                            <option :value="t.id" x-text="t.name"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
+                                    <input type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="teacherReason">
+                                </div>
+
+                                <div class="flex items-center justify-between gap-3">
+                                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
+                                    <form method="POST" :action="selectedLesson?.teacherAction">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="teacher_id" :value="teacherId">
+                                        <input type="hidden" name="reason" :value="teacherReason">
+                                        <x-primary-button>{{ __('Save teacher') }}</x-primary-button>
+                                    </form>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="mode === 'postpone'">
+                            <div class="space-y-4">
+                                <div class="text-sm text-gray-700">
+                                    {{ __('This will postpone this lesson and shift the rest of the cycle by 1 week.') }}
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
+                                    <form method="POST" :action="selectedLesson?.postponeAction" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
+                                        @csrf
+                                        <x-danger-button>{{ __('Confirm postpone') }}</x-danger-button>
+                                    </form>
+                                </div>
+                            </div>
+                        </template>
                     </div>
-
-                    <template x-if="mode === 'menu'">
-                        <div class="flex flex-col gap-2">
-                            <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" @click="mode='reschedule'">
-                                {{ __('Reschedule') }}
-                            </button>
-                            <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900" @click="mode='teacher'">
-                                {{ __('Change teacher (this class only)') }}
-                            </button>
-                            <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700" @click="mode='postpone'">
-                                {{ __('Postpone / Cancel') }}
-                            </button>
-                        </div>
-                    </template>
-
-                    <template x-if="mode === 'reschedule'">
-                        <div class="space-y-3">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('New date/time') }}</div>
-                                <input type="datetime-local" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="rescheduleAt" required>
-                            </div>
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
-                                <input type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="rescheduleReason">
-                            </div>
-
-                            <div class="flex items-center justify-between gap-3">
-                                <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
-                                <form method="POST" :action="selectedLesson?.rescheduleAction" class="flex items-center gap-2">
-                                    @csrf
-                                    @method('PUT')
-                                    <input type="hidden" name="requested_start_at" :value="rescheduleAt">
-                                    <input type="hidden" name="reason" :value="rescheduleReason">
-                                    <x-primary-button>{{ __('Save reschedule') }}</x-primary-button>
-                                </form>
-                            </div>
-                        </div>
-                    </template>
-
-                    <template x-if="mode === 'teacher'">
-                        <div class="space-y-3">
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Select teacher') }}</div>
-                                <select class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="teacherId" required>
-                                    <option value="">{{ __('Choose teacher') }}</option>
-                                    <template x-for="t in teachers" :key="t.id">
-                                        <option :value="t.id" x-text="t.name"></option>
-                                    </template>
-                                </select>
-                            </div>
-                            <div>
-                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
-                                <input type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="teacherReason">
-                            </div>
-
-                            <div class="flex items-center justify-between gap-3">
-                                <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
-                                <form method="POST" :action="selectedLesson?.teacherAction" class="flex items-center gap-2">
-                                    @csrf
-                                    @method('PUT')
-                                    <input type="hidden" name="teacher_id" :value="teacherId">
-                                    <input type="hidden" name="reason" :value="teacherReason">
-                                    <x-primary-button>{{ __('Save teacher') }}</x-primary-button>
-                                </form>
-                            </div>
-                        </div>
-                    </template>
-
-                    <template x-if="mode === 'postpone'">
-                        <div class="space-y-4">
-                            <div class="text-sm text-gray-700">
-                                {{ __('This will postpone this lesson and shift the rest of the cycle by 1 week.') }}
-                            </div>
-                            <div class="flex items-center justify-between gap-3">
-                                <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
-                                <form method="POST" :action="selectedLesson?.postponeAction" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
-                                    @csrf
-                                    <x-danger-button>{{ __('Confirm postpone') }}</x-danger-button>
-                                </form>
-                            </div>
-                        </div>
-                    </template>
                 </div>
-            </x-modal>
+            </div>
         </div>
     </div>
 </x-app-layout>

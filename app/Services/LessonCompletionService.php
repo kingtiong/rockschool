@@ -69,6 +69,9 @@ class LessonCompletionService
                 if ($l->status === Lesson::STATUS_POSTPONED) {
                     return;
                 }
+                if ($l->status === Lesson::STATUS_CANCELLED) {
+                    return;
+                }
 
                 if ($l->status === Lesson::STATUS_SCHEDULED) {
                     $completed++;
@@ -109,6 +112,10 @@ class LessonCompletionService
     private function ensureTeacherEarning(Lesson $lesson): void
     {
         if (! $lesson->cycle_id || ! $lesson->teacher_id) {
+            return;
+        }
+
+        if (in_array($lesson->status, [Lesson::STATUS_CANCELLED, Lesson::STATUS_POSTPONED], true)) {
             return;
         }
 

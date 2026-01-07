@@ -60,12 +60,31 @@ class DashboardController extends Controller
 
         $totalPendingCents = array_sum(array_map(fn ($b) => $b['amount_cents'], $buckets));
 
+        // Renewal reminders: cycles that reached the end (4/4 or 2/2).
+        $renewals = Cycle::query()
+            ->with(['enrollment.student', 'enrollment.feePlan'])
+            ->where('status', Cycle::STATUS_COMPLETED)
+            ->orderByDesc('updated_at')
+            ->limit(30)
+            ->get()
+            ->map(function (Cycle $c) {
+                return [
+                    'cycle_id' => $c->id,
+                    'cycle_number' => $c->cycle_number,
+                    'lessons_per_cycle' => $c->lessons_per_cycle,
+                    'student' => $c->enrollment?->student?->name,
+                    'plan' => $c->enrollment?->feePlan?->name,
+                    'completed_at' => $c->updated_at,
+                ];
+            });
+
         return view('dashboard', [
             'metrics' => [
                 'total_sales_cents' => $totalSalesCents,
                 'total_collected_cents' => $totalCollectedCents,
                 'total_pending_cents' => $totalPendingCents,
                 'pending_buckets' => $buckets,
+                'renewals' => $renewals,
             ],
         ]);
     }

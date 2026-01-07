@@ -57,6 +57,41 @@
                                 {{ __('Aging is calculated from invoice (cycle) created date.') }}
                             </div>
                         </div>
+
+                        <div class="mt-10">
+                            <div class="text-sm font-medium text-gray-700 mb-3">{{ __('Renewal reminders (reached last lesson)') }}</div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Student') }}</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Plan') }}</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Cycle') }}</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Progress') }}</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Updated') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @forelse(($metrics['renewals'] ?? collect()) as $r)
+                                            <tr>
+                                                <td class="px-4 py-3 text-sm text-gray-700">{{ $r['student'] ?? '—' }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700">{{ $r['plan'] ?? '—' }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700">#{{ $r['cycle_number'] ?? '—' }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700">{{ $r['lessons_per_cycle'] ?? '—' }}/{{ $r['lessons_per_cycle'] ?? '—' }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700">{{ $r['completed_at']?->format('Y-m-d') ?? '—' }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500">{{ __('No renewals to show.') }}</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-500">
+                                {{ __('This list shows cycles marked completed (e.g. 4/4 or 2/2).') }}
+                            </div>
+                        </div>
                     @else
                         {{ __("You're logged in!") }}
                     @endif

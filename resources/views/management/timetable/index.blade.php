@@ -233,11 +233,16 @@
                                                             'student' => $lesson->student?->name ?? '—',
                                                             'teacher' => $lesson->teacher?->name ?? '—',
                                                             'teacher_id' => (int) ($lesson->teacher_id ?? 0),
+                                                            'progress' => ($lesson->sequence_in_cycle && $lesson->cycle_size)
+                                                                ? ((int) $lesson->sequence_in_cycle).'/'.((int) $lesson->cycle_size)
+                                                                : null,
+                                                            'status' => (string) $lesson->status,
                                                             'time' => (($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
                                                             'scheduled_start_local' => $lesson->scheduled_start_at?->format('Y-m-d\\TH:i') ?? '',
                                                             'reschedule_action' => route('management.timetable.lessons.reschedule.update', $lesson),
                                                             'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
                                                             'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
+                                                            'cancel_action' => route('management.timetable.lessons.cancel', $lesson),
                                                             'span' => (int) $span,
                                                         ];
                                                     @endphp
@@ -246,6 +251,11 @@
                                                         style="height: calc({{ $rowH }}px * {{ max(1, (int) $span) }} - 6px);"
                                                         data-lesson='@json($payload)'
                                                     >
+                                                        @if($lesson->sequence_in_cycle)
+                                                            <div class="absolute top-1 right-1 text-[10px] font-semibold text-indigo-700 bg-white/70 px-1 rounded">
+                                                                {{ $lesson->sequence_in_cycle }}/{{ $lesson->cycle_size }}
+                                                            </div>
+                                                        @endif
                                                         <div class="text-[11px] text-indigo-700 font-medium leading-tight">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
                                                         <div class="text-sm font-semibold text-gray-900 leading-tight">{{ $lesson->student?->name ?? '—' }}</div>
                                                         <div class="text-[11px] text-gray-700 leading-tight">{{ $lesson->teacher?->name ?? '—' }}</div>
@@ -283,7 +293,8 @@
             <div id="lesson-actions-menu" class="flex flex-col gap-2">
                 <button type="button" id="lesson-actions-btn-reschedule" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">{{ __('Reschedule') }}</button>
                 <button type="button" id="lesson-actions-btn-teacher" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{{ __('Change teacher (this class only)') }}</button>
-                <button type="button" id="lesson-actions-btn-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{{ __('Postpone / Cancel') }}</button>
+                <button type="button" id="lesson-actions-btn-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700">{{ __('Postpone + shift cycle') }}</button>
+                <button type="button" id="lesson-actions-btn-cancel" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{{ __('Cancel this lesson only') }}</button>
             </div>
 
             <div id="lesson-actions-reschedule" class="hidden space-y-3">
@@ -302,6 +313,8 @@
                         @method('PUT')
                         <input type="hidden" name="requested_start_at" id="lesson-actions-reschedule-hidden-at">
                         <input type="hidden" name="reason" id="lesson-actions-reschedule-hidden-reason">
+                        <input type="hidden" name="day" id="lesson-actions-day-1">
+                        <input type="hidden" name="branch_id" id="lesson-actions-branch-1">
                         <x-primary-button>{{ __('Save reschedule') }}</x-primary-button>
                     </form>
                 </div>
@@ -328,6 +341,8 @@
                         @method('PUT')
                         <input type="hidden" name="teacher_id" id="lesson-actions-teacher-hidden-id">
                         <input type="hidden" name="reason" id="lesson-actions-teacher-hidden-reason">
+                        <input type="hidden" name="day" id="lesson-actions-day-2">
+                        <input type="hidden" name="branch_id" id="lesson-actions-branch-2">
                         <x-primary-button>{{ __('Save teacher') }}</x-primary-button>
                     </form>
                 </div>
@@ -339,7 +354,22 @@
                     <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-3">{{ __('Back') }}</button>
                     <form id="lesson-actions-postpone-form" method="POST" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
                         @csrf
+                        <input type="hidden" name="day" id="lesson-actions-day-3">
+                        <input type="hidden" name="branch_id" id="lesson-actions-branch-3">
                         <x-danger-button>{{ __('Confirm postpone') }}</x-danger-button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="lesson-actions-cancel" class="hidden space-y-4">
+                <div class="text-sm text-gray-700">{{ __('This will cancel only this lesson (no shifting).') }}</div>
+                <div class="flex items-center justify-between gap-3">
+                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-4">{{ __('Back') }}</button>
+                    <form id="lesson-actions-cancel-form" method="POST" onsubmit="return confirm('{{ __('Cancel only this lesson?') }}')">
+                        @csrf
+                        <input type="hidden" name="day" id="lesson-actions-day-4">
+                        <input type="hidden" name="branch_id" id="lesson-actions-branch-4">
+                        <x-danger-button>{{ __('Confirm cancel') }}</x-danger-button>
                     </form>
                 </div>
             </div>
@@ -383,38 +413,52 @@
     var paneReschedule = document.getElementById('lesson-actions-reschedule');
     var paneTeacher = document.getElementById('lesson-actions-teacher');
     var panePostpone = document.getElementById('lesson-actions-postpone');
+    var paneCancel = document.getElementById('lesson-actions-cancel');
 
     var btnReschedule = document.getElementById('lesson-actions-btn-reschedule');
     var btnTeacher = document.getElementById('lesson-actions-btn-teacher');
     var btnPostpone = document.getElementById('lesson-actions-btn-postpone');
+    var btnCancel = document.getElementById('lesson-actions-btn-cancel');
 
     var back1 = document.getElementById('lesson-actions-back-1');
     var back2 = document.getElementById('lesson-actions-back-2');
     var back3 = document.getElementById('lesson-actions-back-3');
+    var back4 = document.getElementById('lesson-actions-back-4');
 
     var resAt = document.getElementById('lesson-actions-reschedule-at');
     var resReason = document.getElementById('lesson-actions-reschedule-reason');
     var resForm = document.getElementById('lesson-actions-reschedule-form');
     var resHiddenAt = document.getElementById('lesson-actions-reschedule-hidden-at');
     var resHiddenReason = document.getElementById('lesson-actions-reschedule-hidden-reason');
+    var day1 = document.getElementById('lesson-actions-day-1');
+    var branch1 = document.getElementById('lesson-actions-branch-1');
 
     var teacherId = document.getElementById('lesson-actions-teacher-id');
     var teacherReason = document.getElementById('lesson-actions-teacher-reason');
     var teacherForm = document.getElementById('lesson-actions-teacher-form');
     var teacherHiddenId = document.getElementById('lesson-actions-teacher-hidden-id');
     var teacherHiddenReason = document.getElementById('lesson-actions-teacher-hidden-reason');
+    var day2 = document.getElementById('lesson-actions-day-2');
+    var branch2 = document.getElementById('lesson-actions-branch-2');
 
     var postponeForm = document.getElementById('lesson-actions-postpone-form');
+    var cancelForm = document.getElementById('lesson-actions-cancel-form');
+    var day3 = document.getElementById('lesson-actions-day-3');
+    var branch3 = document.getElementById('lesson-actions-branch-3');
+    var day4 = document.getElementById('lesson-actions-day-4');
+    var branch4 = document.getElementById('lesson-actions-branch-4');
 
     function showPane(which) {
       menu.classList.add('hidden');
       paneReschedule.classList.add('hidden');
       paneTeacher.classList.add('hidden');
       panePostpone.classList.add('hidden');
+      paneCancel.classList.add('hidden');
       if (which === 'menu') menu.classList.remove('hidden');
       if (which === 'reschedule') paneReschedule.classList.remove('hidden');
       if (which === 'teacher') paneTeacher.classList.remove('hidden');
       if (which === 'postpone') panePostpone.classList.remove('hidden');
+      if (which === 'cancel') paneCancel.classList.remove('hidden');
     }
 
     function openModal(payload) {
@@ -422,10 +466,24 @@
       resForm.action = payload.reschedule_action || '';
       teacherForm.action = payload.teacher_action || '';
       postponeForm.action = payload.postpone_action || '';
+      cancelForm.action = payload.cancel_action || '';
       resAt.value = payload.scheduled_start_local || '';
       teacherId.value = payload.teacher_id ? String(payload.teacher_id) : '';
       resReason.value = '';
       teacherReason.value = '';
+
+      var params = new URLSearchParams(window.location.search);
+      var day = params.get('day') || '';
+      var branchId = params.get('branch_id') || '';
+      if (day1) day1.value = day;
+      if (branch1) branch1.value = branchId;
+      if (day2) day2.value = day;
+      if (branch2) branch2.value = branchId;
+      if (day3) day3.value = day;
+      if (branch3) branch3.value = branchId;
+      if (day4) day4.value = day;
+      if (branch4) branch4.value = branchId;
+
       showPane('menu');
       modal.classList.remove('hidden');
     }
@@ -454,9 +512,11 @@
     btnReschedule.addEventListener('click', function () { showPane('reschedule'); });
     btnTeacher.addEventListener('click', function () { showPane('teacher'); });
     btnPostpone.addEventListener('click', function () { showPane('postpone'); });
+    btnCancel.addEventListener('click', function () { showPane('cancel'); });
     back1.addEventListener('click', function () { showPane('menu'); });
     back2.addEventListener('click', function () { showPane('menu'); });
     back3.addEventListener('click', function () { showPane('menu'); });
+    back4.addEventListener('click', function () { showPane('menu'); });
 
     resForm.addEventListener('submit', function () {
       resHiddenAt.value = resAt.value;

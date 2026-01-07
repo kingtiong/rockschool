@@ -433,8 +433,49 @@ class TimetableController extends Controller
             }
         });
 
+        $lesson->refresh();
+
         return redirect()->route('management.timetable.index', [
-            'date' => $lesson->scheduled_start_at->toDateString(),
+            'date' => $lesson->scheduled_start_at?->toDateString(),
+            'day' => $request->input('day'),
+            'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
+        ]);
+    }
+
+    public function cancel(Request $request, Lesson $lesson): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        DB::transaction(function () use ($lesson, $user): void {
+            RescheduleRequest::create([
+                'lesson_id' => $lesson->id,
+                'requested_by_user_id' => $user->id,
+                'type' => RescheduleRequest::TYPE_CHANGE,
+                'requested_start_at' => null,
+                'reason' => 'Management cancelled lesson',
+                'status' => RescheduleRequest::STATUS_AUTO_APPLIED,
+                'decided_by_user_id' => $user->id,
+                'decided_at' => now(),
+            ]);
+
+            $lesson->update([
+                'status' => Lesson::STATUS_CANCELLED,
+            ]);
+
+            // If an earning already exists (unpaid), remove it since lesson is cancelled.
+            TeacherEarning::query()
+                ->where('lesson_id', $lesson->id)
+                ->where('status', TeacherEarning::STATUS_UNPAID)
+                ->delete();
+        });
+
+        $lesson->refresh();
+
+        return redirect()->route('management.timetable.index', [
+            'date' => $lesson->scheduled_start_at?->toDateString(),
+            'day' => $request->input('day'),
+            'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
         ]);
     }
 
@@ -481,6 +522,8 @@ class TimetableController extends Controller
 
         return redirect()->route('management.timetable.index', [
             'date' => $requestedStartAt->toDateString(),
+            'day' => $request->input('day'),
+            'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
         ]);
     }
 
@@ -561,8 +604,11 @@ class TimetableController extends Controller
             ]);
         });
 
+        $lesson->refresh();
         return redirect()->route('management.timetable.index', [
-            'date' => $lesson->scheduled_start_at->toDateString(),
+            'date' => $lesson->scheduled_start_at?->toDateString(),
+            'day' => $request->input('day'),
+            'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
         ]);
     }
 }

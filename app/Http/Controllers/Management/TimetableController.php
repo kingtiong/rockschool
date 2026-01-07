@@ -77,6 +77,11 @@ class TimetableController extends Controller
         $selectedBranchId = $validated['branch_id'] ?? null;
         $selectedBranch = $selectedBranchId ? $branches->firstWhere('id', (int) $selectedBranchId) : null;
 
+        $teachers = User::query()
+            ->where('role', 'teacher')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         // Timetable is branch-specific: default to a branch that actually has lessons.
         if (! $selectedBranch) {
             $selectedBranch = Branch::query()
@@ -220,6 +225,7 @@ class TimetableController extends Controller
             'spans' => $spans,
             'lessonsCount' => $lessons->count(),
             'firstLessonTimeKey' => $firstLessonTimeKey,
+            'teachers' => $teachers,
         ]);
     }
 

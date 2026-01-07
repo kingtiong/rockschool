@@ -15,12 +15,14 @@ class Lesson extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_POSTPONED = 'postponed';
     public const STATUS_MISSED = 'missed';
+    public const STATUS_CANCELLED = 'cancelled';
 
     public const STATUSES = [
         self::STATUS_SCHEDULED,
         self::STATUS_COMPLETED,
         self::STATUS_POSTPONED,
         self::STATUS_MISSED,
+        self::STATUS_CANCELLED,
     ];
 
     protected $fillable = [

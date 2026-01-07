@@ -40,6 +40,7 @@
                             <x-status-badge status="completed" />
                             <x-status-badge status="postponed" />
                             <x-status-badge status="missed" />
+                            <x-status-badge status="cancelled" />
                         </div>
                     </div>
 

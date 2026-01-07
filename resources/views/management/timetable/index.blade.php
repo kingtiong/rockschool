@@ -217,18 +217,19 @@
                                             @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
                                             <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }} {{ $covered && ! $lesson ? 'pointer-events-none' : '' }}" style="min-height: {{ $rowH }}px;">
                                                 @if($lesson)
-                                                    @php($payload = [
-                                                        'id' => (int) $lesson->id,
-                                                        'student' => $lesson->student?->name ?? '—',
-                                                        'teacher' => $lesson->teacher?->name ?? '—',
-                                                        'teacher_id' => (int) ($lesson->teacher_id ?? 0),
-                                                        'time' => (($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
-                                                        'scheduled_start_local' => $lesson->scheduled_start_at?->format('Y-m-d\\TH:i') ?? '',
-                                                        'reschedule_action' => route('management.timetable.lessons.reschedule.update', $lesson),
-                                                        'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
-                                                        'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
-                                                        'span' => (int) $span,
-                                                    ])
+                                                    @php
+                                                        $payload = [
+                                                            'id' => (int) $lesson->id,
+                                                            'student' => $lesson->student?->name ?? '—',
+                                                            'teacher' => $lesson->teacher?->name ?? '—',
+                                                            'teacher_id' => (int) ($lesson->teacher_id ?? 0),
+                                                            'time' => (($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
+                                                            'scheduled_start_local' => $lesson->scheduled_start_at?->format('Y-m-d\\TH:i') ?? '',
+                                                            'reschedule_action' => route('management.timetable.lessons.reschedule.update', $lesson),
+                                                            'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
+                                                            'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
+                                                            'span' => (int) $span,
+                                                        ];
                                                     @endphp
                                                     <div
                                                         class="js-lesson-card absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden cursor-pointer z-20 pointer-events-auto"

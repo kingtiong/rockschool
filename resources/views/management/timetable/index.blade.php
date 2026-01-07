@@ -128,25 +128,7 @@
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg" x-data="{
-                teachers: @js(($teachers ?? collect())->map(fn($t) => ['id' => (int) $t->id, 'name' => $t->name])->values()->all()),
-                mode: 'menu', // menu | reschedule | teacher | postpone
-                selectedLesson: null,
-                showActions: false,
-                rescheduleAt: '',
-                rescheduleReason: '',
-                teacherId: '',
-                teacherReason: '',
-                openActions(lesson) {
-                    this.selectedLesson = lesson;
-                    this.mode = 'menu';
-                    this.rescheduleAt = lesson.scheduledStartLocal || '';
-                    this.rescheduleReason = '';
-                    this.teacherId = lesson.teacherId || '';
-                    this.teacherReason = '';
-                    this.showActions = true;
-                }
-            }">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 space-y-4">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -235,20 +217,23 @@
                                             @php($span = $spans[$dateKey][$timeKey][$room] ?? 1)
                                             <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }} {{ $covered && ! $lesson ? 'pointer-events-none' : '' }}" style="min-height: {{ $rowH }}px;">
                                                 @if($lesson)
+                                                    @php($payload = [
+                                                        'id' => (int) $lesson->id,
+                                                        'student' => $lesson->student?->name ?? '—',
+                                                        'teacher' => $lesson->teacher?->name ?? '—',
+                                                        'teacher_id' => (int) ($lesson->teacher_id ?? 0),
+                                                        'time' => (($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
+                                                        'scheduled_start_local' => $lesson->scheduled_start_at?->format('Y-m-d\\TH:i') ?? '',
+                                                        'reschedule_action' => route('management.timetable.lessons.reschedule.update', $lesson),
+                                                        'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
+                                                        'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
+                                                        'span' => (int) $span,
+                                                    ])
+                                                    @endphp
                                                     <div
-                                                        class="absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden cursor-pointer z-20 pointer-events-auto"
+                                                        class="js-lesson-card absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden cursor-pointer z-20 pointer-events-auto"
                                                         style="height: calc({{ $rowH }}px * {{ max(1, (int) $span) }} - 6px);"
-                                                        @click="openActions({
-                                                            id: {{ (int) $lesson->id }},
-                                                            student: @js($lesson->student?->name ?? '—'),
-                                                            teacher: @js($lesson->teacher?->name ?? '—'),
-                                                            teacherId: {{ (int) ($lesson->teacher_id ?? 0) }},
-                                                            time: @js(($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
-                                                            scheduledStartLocal: @js($lesson->scheduled_start_at?->format('Y-m-d\\TH:i') ?? ''),
-                                                            rescheduleAction: @js(route('management.timetable.lessons.reschedule.update', $lesson)),
-                                                            teacherAction: @js(route('management.timetable.lessons.teacher.update', $lesson)),
-                                                            postponeAction: @js(route('management.timetable.lessons.postpone', $lesson)),
-                                                        })"
+                                                        data-lesson='@json($payload)'
                                                     >
                                                         <div class="text-[11px] text-indigo-700 font-medium leading-tight">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
                                                         <div class="text-sm font-semibold text-gray-900 leading-tight">{{ $lesson->student?->name ?? '—' }}</div>
@@ -267,112 +252,89 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</x-app-layout>
 
-            <!-- Inline modal (stays in same Alpine scope) -->
-            <div
-                x-show="showActions"
-                x-on:keydown.escape.window="showActions = false"
-                class="fixed inset-0 z-50 px-4 py-6 sm:px-0"
-                style="display: none;"
-            >
-                <div class="absolute inset-0 bg-gray-500 opacity-75" @click="showActions = false"></div>
-                <div class="relative mb-6 bg-white rounded-lg overflow-hidden shadow-xl sm:w-full sm:max-w-md sm:mx-auto">
-                    <div class="p-6 space-y-4">
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <div class="text-lg font-semibold text-gray-900">{{ __('Class actions') }}</div>
-                                <div class="text-sm text-gray-600" x-text="selectedLesson ? (selectedLesson.time + ' · ' + selectedLesson.student + ' · ' + selectedLesson.teacher) : ''"></div>
-                            </div>
-                            <button type="button" class="text-sm text-gray-500 underline" @click="showActions = false">{{ __('Close') }}</button>
-                        </div>
+<!-- Actions Modal (plain JS, no Alpine dependency) -->
+<div id="lesson-actions-modal" class="fixed inset-0 z-50 hidden">
+    <div id="lesson-actions-overlay" class="absolute inset-0 bg-gray-500 opacity-75"></div>
+    <div class="relative mx-auto mt-10 w-full max-w-md bg-white rounded-lg shadow-xl overflow-hidden">
+        <div class="p-6 space-y-4">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <div class="text-lg font-semibold text-gray-900">{{ __('Class actions') }}</div>
+                    <div id="lesson-actions-subtitle" class="text-sm text-gray-600"></div>
+                </div>
+                <button type="button" id="lesson-actions-close" class="text-sm text-gray-500 underline">{{ __('Close') }}</button>
+            </div>
 
-                        <template x-if="mode === 'menu'">
-                            <div class="flex flex-col gap-2">
-                                <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700" @click="mode='reschedule'">
-                                    {{ __('Reschedule') }}
-                                </button>
-                                <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900" @click="mode='teacher'">
-                                    {{ __('Change teacher (this class only)') }}
-                                </button>
-                                <button type="button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700" @click="mode='postpone'">
-                                    {{ __('Postpone / Cancel') }}
-                                </button>
-                            </div>
-                        </template>
+            <div id="lesson-actions-menu" class="flex flex-col gap-2">
+                <button type="button" id="lesson-actions-btn-reschedule" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">{{ __('Reschedule') }}</button>
+                <button type="button" id="lesson-actions-btn-teacher" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{{ __('Change teacher (this class only)') }}</button>
+                <button type="button" id="lesson-actions-btn-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{{ __('Postpone / Cancel') }}</button>
+            </div>
 
-                        <template x-if="mode === 'reschedule'">
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('New date/time') }}</div>
-                                    <input type="datetime-local" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="rescheduleAt" required>
-                                </div>
-                                <div>
-                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
-                                    <input type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="rescheduleReason">
-                                </div>
+            <div id="lesson-actions-reschedule" class="hidden space-y-3">
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('New date/time') }}</div>
+                    <input id="lesson-actions-reschedule-at" type="datetime-local" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" required>
+                </div>
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
+                    <input id="lesson-actions-reschedule-reason" type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-1">{{ __('Back') }}</button>
+                    <form id="lesson-actions-reschedule-form" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="requested_start_at" id="lesson-actions-reschedule-hidden-at">
+                        <input type="hidden" name="reason" id="lesson-actions-reschedule-hidden-reason">
+                        <x-primary-button>{{ __('Save reschedule') }}</x-primary-button>
+                    </form>
+                </div>
+            </div>
 
-                                <div class="flex items-center justify-between gap-3">
-                                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
-                                    <form method="POST" :action="selectedLesson?.rescheduleAction">
-                                        @csrf
-                                        @method('PUT')
-                                        <input type="hidden" name="requested_start_at" :value="rescheduleAt">
-                                        <input type="hidden" name="reason" :value="rescheduleReason">
-                                        <x-primary-button>{{ __('Save reschedule') }}</x-primary-button>
-                                    </form>
-                                </div>
-                            </div>
-                        </template>
+            <div id="lesson-actions-teacher" class="hidden space-y-3">
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Select teacher') }}</div>
+                    <select id="lesson-actions-teacher-id" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" required>
+                        <option value="">{{ __('Choose teacher') }}</option>
+                        @foreach(($teachers ?? collect()) as $t)
+                            <option value="{{ (int) $t->id }}">{{ $t->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
+                    <input id="lesson-actions-teacher-reason" type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-2">{{ __('Back') }}</button>
+                    <form id="lesson-actions-teacher-form" method="POST">
+                        @csrf
+                        @method('PUT')
+                        <input type="hidden" name="teacher_id" id="lesson-actions-teacher-hidden-id">
+                        <input type="hidden" name="reason" id="lesson-actions-teacher-hidden-reason">
+                        <x-primary-button>{{ __('Save teacher') }}</x-primary-button>
+                    </form>
+                </div>
+            </div>
 
-                        <template x-if="mode === 'teacher'">
-                            <div class="space-y-3">
-                                <div>
-                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Select teacher') }}</div>
-                                    <select class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="teacherId" required>
-                                        <option value="">{{ __('Choose teacher') }}</option>
-                                        <template x-for="t in teachers" :key="t.id">
-                                            <option :value="t.id" x-text="t.name"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                                <div>
-                                    <div class="text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Reason (optional)') }}</div>
-                                    <input type="text" class="mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" x-model="teacherReason">
-                                </div>
-
-                                <div class="flex items-center justify-between gap-3">
-                                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
-                                    <form method="POST" :action="selectedLesson?.teacherAction">
-                                        @csrf
-                                        @method('PUT')
-                                        <input type="hidden" name="teacher_id" :value="teacherId">
-                                        <input type="hidden" name="reason" :value="teacherReason">
-                                        <x-primary-button>{{ __('Save teacher') }}</x-primary-button>
-                                    </form>
-                                </div>
-                            </div>
-                        </template>
-
-                        <template x-if="mode === 'postpone'">
-                            <div class="space-y-4">
-                                <div class="text-sm text-gray-700">
-                                    {{ __('This will postpone this lesson and shift the rest of the cycle by 1 week.') }}
-                                </div>
-                                <div class="flex items-center justify-between gap-3">
-                                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" @click="mode='menu'">{{ __('Back') }}</button>
-                                    <form method="POST" :action="selectedLesson?.postponeAction" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
-                                        @csrf
-                                        <x-danger-button>{{ __('Confirm postpone') }}</x-danger-button>
-                                    </form>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
+            <div id="lesson-actions-postpone" class="hidden space-y-4">
+                <div class="text-sm text-gray-700">{{ __('This will postpone this lesson and shift the rest of the cycle by 1 week.') }}</div>
+                <div class="flex items-center justify-between gap-3">
+                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-3">{{ __('Back') }}</button>
+                    <form id="lesson-actions-postpone-form" method="POST" onsubmit="return confirm('{{ __('Postpone this lesson and shift the rest of the cycle by 1 week?') }}')">
+                        @csrf
+                        <x-danger-button>{{ __('Confirm postpone') }}</x-danger-button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-</x-app-layout>
+</div>
 
 <script>
   // Auto-scroll to first class time, and make jump link scroll inside the grid.
@@ -396,6 +358,103 @@
         grid.scrollTop = Math.max(0, t.offsetTop - 80);
       });
     }
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('lesson-actions-modal');
+    var overlay = document.getElementById('lesson-actions-overlay');
+    var closeBtn = document.getElementById('lesson-actions-close');
+    var subtitle = document.getElementById('lesson-actions-subtitle');
+
+    var menu = document.getElementById('lesson-actions-menu');
+    var paneReschedule = document.getElementById('lesson-actions-reschedule');
+    var paneTeacher = document.getElementById('lesson-actions-teacher');
+    var panePostpone = document.getElementById('lesson-actions-postpone');
+
+    var btnReschedule = document.getElementById('lesson-actions-btn-reschedule');
+    var btnTeacher = document.getElementById('lesson-actions-btn-teacher');
+    var btnPostpone = document.getElementById('lesson-actions-btn-postpone');
+
+    var back1 = document.getElementById('lesson-actions-back-1');
+    var back2 = document.getElementById('lesson-actions-back-2');
+    var back3 = document.getElementById('lesson-actions-back-3');
+
+    var resAt = document.getElementById('lesson-actions-reschedule-at');
+    var resReason = document.getElementById('lesson-actions-reschedule-reason');
+    var resForm = document.getElementById('lesson-actions-reschedule-form');
+    var resHiddenAt = document.getElementById('lesson-actions-reschedule-hidden-at');
+    var resHiddenReason = document.getElementById('lesson-actions-reschedule-hidden-reason');
+
+    var teacherId = document.getElementById('lesson-actions-teacher-id');
+    var teacherReason = document.getElementById('lesson-actions-teacher-reason');
+    var teacherForm = document.getElementById('lesson-actions-teacher-form');
+    var teacherHiddenId = document.getElementById('lesson-actions-teacher-hidden-id');
+    var teacherHiddenReason = document.getElementById('lesson-actions-teacher-hidden-reason');
+
+    var postponeForm = document.getElementById('lesson-actions-postpone-form');
+
+    function showPane(which) {
+      menu.classList.add('hidden');
+      paneReschedule.classList.add('hidden');
+      paneTeacher.classList.add('hidden');
+      panePostpone.classList.add('hidden');
+      if (which === 'menu') menu.classList.remove('hidden');
+      if (which === 'reschedule') paneReschedule.classList.remove('hidden');
+      if (which === 'teacher') paneTeacher.classList.remove('hidden');
+      if (which === 'postpone') panePostpone.classList.remove('hidden');
+    }
+
+    function openModal(payload) {
+      subtitle.textContent = (payload.time || '') + ' · ' + (payload.student || '') + ' · ' + (payload.teacher || '');
+      resForm.action = payload.reschedule_action || '';
+      teacherForm.action = payload.teacher_action || '';
+      postponeForm.action = payload.postpone_action || '';
+      resAt.value = payload.scheduled_start_local || '';
+      teacherId.value = payload.teacher_id ? String(payload.teacher_id) : '';
+      resReason.value = '';
+      teacherReason.value = '';
+      showPane('menu');
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+    }
+
+    document.addEventListener('click', function (e) {
+      var card = e.target.closest('.js-lesson-card');
+      if (!card) return;
+      try {
+        var payload = JSON.parse(card.getAttribute('data-lesson') || '{}');
+        openModal(payload);
+      } catch (err) {
+        // ignore
+      }
+    });
+
+    overlay.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    btnReschedule.addEventListener('click', function () { showPane('reschedule'); });
+    btnTeacher.addEventListener('click', function () { showPane('teacher'); });
+    btnPostpone.addEventListener('click', function () { showPane('postpone'); });
+    back1.addEventListener('click', function () { showPane('menu'); });
+    back2.addEventListener('click', function () { showPane('menu'); });
+    back3.addEventListener('click', function () { showPane('menu'); });
+
+    resForm.addEventListener('submit', function () {
+      resHiddenAt.value = resAt.value;
+      resHiddenReason.value = resReason.value;
+    });
+    teacherForm.addEventListener('submit', function () {
+      teacherHiddenId.value = teacherId.value;
+      teacherHiddenReason.value = teacherReason.value;
+    });
   });
 </script>
 

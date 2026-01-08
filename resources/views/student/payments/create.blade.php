@@ -12,7 +12,20 @@
                     <div class="text-sm text-gray-600">
                         <div><span class="font-medium text-gray-800">{{ __('Plan:') }}</span> {{ $cycle->enrollment?->feePlan?->name ?? '—' }}</div>
                         <div><span class="font-medium text-gray-800">{{ __('Cycle:') }}</span> #{{ $cycle->cycle_number }}</div>
-                        <div><span class="font-medium text-gray-800">{{ __('Amount:') }}</span> RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }}</div>
+                        @php($chargesCents = (int) ($cycle->additionalCharges?->sum('amount_cents') ?? 0))
+                        @php($totalCents = (int) $cycle->cycle_fee_cents + $chargesCents)
+                        <div><span class="font-medium text-gray-800">{{ __('Amount:') }}</span> RM {{ number_format($totalCents / 100, 2) }}</div>
+                        @if($chargesCents > 0)
+                            <div class="text-xs text-gray-500">
+                                {{ __('Base') }}: RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }}
+                                · {{ __('Charges') }}: RM {{ number_format($chargesCents / 100, 2) }}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                @foreach($cycle->additionalCharges as $ch)
+                                    <div>- {{ $ch->description }} (RM {{ number_format($ch->amount_cents / 100, 2) }})</div>
+                                @endforeach
+                            </div>
+                        @endif
                         <div><span class="font-medium text-gray-800">{{ __('Status:') }}</span> <x-status-badge :status="$cycle->status" /></div>
                     </div>
 

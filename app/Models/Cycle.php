@@ -32,6 +32,7 @@ class Cycle extends Model
         'cycle_fee_cents',
         'lessons_per_cycle',
         'minutes_per_lesson',
+        'interval_weeks',
         'cycle_minutes_total',
         'cycle_number',
         'status',
@@ -52,8 +53,32 @@ class Cycle extends Model
         return $this->hasMany(Lesson::class);
     }
 
+    public function additionalCharges(): HasMany
+    {
+        return $this->hasMany(AdditionalCharge::class);
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
+
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function additionalChargesTotalCents(): int
+    {
+        if ($this->relationLoaded('additionalCharges')) {
+            return (int) $this->additionalCharges->sum('amount_cents');
+        }
+
+        return (int) $this->additionalCharges()->sum('amount_cents');
+    }
+
+    public function totalDueCents(): int
+    {
+        return (int) $this->cycle_fee_cents + $this->additionalChargesTotalCents();
     }
 }

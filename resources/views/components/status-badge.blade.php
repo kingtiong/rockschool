@@ -8,6 +8,7 @@
         'completed' => 'bg-green-50 text-green-700 ring-green-600/20',
         'postponed' => 'bg-amber-50 text-amber-800 ring-amber-600/20',
         'missed' => 'bg-red-50 text-red-700 ring-red-600/20',
+        'cancelled' => 'bg-gray-100 text-gray-800 ring-gray-600/20',
         // cycles
         'awaiting_student_payment' => 'bg-gray-50 text-gray-700 ring-gray-600/20',
         'payment_submitted' => 'bg-amber-50 text-amber-800 ring-amber-600/20',

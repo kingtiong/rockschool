@@ -1,8 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Fee Plans') }}
-        </h2>
+        <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Fee Plans') }}
+            </h2>
+            <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.fee-plans.create') }}">
+                {{ __('Create fee plan') }}
+            </a>
+        </div>
     </x-slot>
 
     <div class="py-12">

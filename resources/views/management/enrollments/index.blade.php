@@ -18,10 +18,12 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Branch') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Student') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Teacher') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Plan') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Minutes') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Time') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
                                     <th class="px-4 py-3"></th>
                                 </tr>
@@ -29,10 +31,12 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @forelse($enrollments as $enrollment)
                                     <tr>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->branch?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $enrollment->student?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->teacher?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->feePlan?->name ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->minutes_per_lesson }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">{{ $enrollment->preferred_start_time ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm"><x-status-badge :status="$enrollment->status" /></td>
                                         <td class="px-4 py-3 text-right">
                                             <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.cycles.create', $enrollment) }}">
@@ -42,7 +46,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No enrollments yet.') }}</td>
+                                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No enrollments yet.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

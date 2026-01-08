@@ -9,8 +9,41 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    @if ($errors->any())
+                        <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                            <div class="font-semibold">Could not save enrollment</div>
+                            <ul class="mt-2 list-disc pl-5">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('management.enrollments.store') }}" class="space-y-6">
                         @csrf
+
+                        <div>
+                            <x-input-label for="branch_id" :value="__('Branch (optional)')" />
+                            <select id="branch_id" name="branch_id" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                <option value="">{{ __('No branch') }}</option>
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}" @selected(old('branch_id') == $b->id)>{{ $b->name }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('branch_id')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="preferred_room_number" :value="__('Preferred room (optional)')" />
+                            <select id="preferred_room_number" name="preferred_room_number" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" disabled>
+                                <option value="">{{ __('Select branch first') }}</option>
+                            </select>
+                            <div class="mt-2 text-sm text-gray-500">
+                                {{ __('If you select a room and it is occupied at the selected time, the enrollment will not be saved.') }}
+                            </div>
+                            <x-input-error :messages="$errors->get('preferred_room_number')" class="mt-2" />
+                        </div>
 
                         <div>
                             <x-input-label for="student_id" :value="__('Student')" />
@@ -59,9 +92,24 @@
                         </div>
 
                         <div>
+                            <x-input-label for="interval_weeks" :value="__('Monthly frequency')" />
+                            <select id="interval_weeks" name="interval_weeks" class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                <option value="1" @selected(old('interval_weeks', '1') == '1')>{{ __('1 month 4 times (weekly)') }}</option>
+                                <option value="2" @selected(old('interval_weeks') == '2')>{{ __('1 month 2 times (every 2 weeks)') }}</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('interval_weeks')" class="mt-2" />
+                        </div>
+
+                        <div>
                             <x-input-label for="started_on" :value="__('Started on (optional)')" />
                             <x-text-input id="started_on" name="started_on" type="date" class="block mt-1 w-full" :value="old('started_on')" />
                             <x-input-error :messages="$errors->get('started_on')" class="mt-2" />
+                        </div>
+
+                        <div>
+                            <x-input-label for="preferred_start_time" :value="__('Preferred time (optional)')" />
+                            <x-text-input id="preferred_start_time" name="preferred_start_time" type="time" class="block mt-1 w-full" :value="old('preferred_start_time')" />
+                            <x-input-error :messages="$errors->get('preferred_start_time')" class="mt-2" />
                         </div>
 
                         <div class="flex items-center justify-end gap-3">
@@ -69,6 +117,62 @@
                             <x-primary-button>{{ __('Create') }}</x-primary-button>
                         </div>
                     </form>
+
+                    <script>
+                        (function () {
+                            const branchRoomNumbers = @json($branchRoomNumbers ?? []);
+                            const branchSelect = document.getElementById('branch_id');
+                            const roomSelect = document.getElementById('preferred_room_number');
+                            const oldPreferredRoom = @json(old('preferred_room_number'));
+
+                            function setOptions(roomNumbers) {
+                                roomSelect.innerHTML = '';
+
+                                const blank = document.createElement('option');
+                                blank.value = '';
+                                blank.textContent = 'Auto-assign any available room';
+                                roomSelect.appendChild(blank);
+
+                                (roomNumbers || []).forEach((n) => {
+                                    const opt = document.createElement('option');
+                                    opt.value = String(n);
+                                    opt.textContent = `Room ${n}`;
+                                    roomSelect.appendChild(opt);
+                                });
+
+                                if (oldPreferredRoom !== null && oldPreferredRoom !== '' && oldPreferredRoom !== undefined) {
+                                    roomSelect.value = String(oldPreferredRoom);
+                                } else {
+                                    roomSelect.value = '';
+                                }
+                            }
+
+                            function refreshRooms() {
+                                const branchId = branchSelect.value;
+                                if (!branchId) {
+                                    roomSelect.disabled = true;
+                                    roomSelect.innerHTML = '';
+                                    const opt = document.createElement('option');
+                                    opt.value = '';
+                                    opt.textContent = 'Select branch first';
+                                    roomSelect.appendChild(opt);
+                                    return;
+                                }
+
+                                roomSelect.disabled = false;
+                                const rooms = branchRoomNumbers[branchId] || [];
+                                setOptions(rooms);
+                            }
+
+                            branchSelect.addEventListener('change', function () {
+                                // When branch changes, clear preferred room (force re-pick).
+                                roomSelect.value = '';
+                                refreshRooms();
+                            });
+
+                            refreshRooms();
+                        })();
+                    </script>
                 </div>
             </div>
         </div>

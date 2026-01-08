@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Branch;
 use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\FeePlan;
@@ -38,6 +39,12 @@ class DatabaseSeeder extends Seeder
             'role' => 'student',
         ]);
 
+        $branch = Branch::create([
+            'name' => 'Main Branch',
+            'active' => true,
+            'classrooms_count' => 3,
+        ]);
+
         // Fee plans (RM -> cents)
         $plans = [
             ['Premiere', 220, 4, 60, true],
@@ -71,6 +78,7 @@ class DatabaseSeeder extends Seeder
         $feePlan = FeePlan::query()->where('name', 'Grade 6')->firstOrFail();
 
         $enrollment = Enrollment::create([
+            'branch_id' => $branch->id,
             'student_id' => $student->id,
             'teacher_id' => $teacher->id,
             'fee_plan_id' => $feePlan->id,

@@ -3,11 +3,19 @@
 namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\Cycle;
 use App\Models\Enrollment;
 use App\Models\FeePlan;
+use App\Models\Lesson;
+use App\Models\Room;
 use App\Models\User;
+use App\Services\InvoiceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class EnrollmentController extends Controller
@@ -16,7 +24,7 @@ class EnrollmentController extends Controller
     {
         return view('management.enrollments.index', [
             'enrollments' => Enrollment::query()
-                ->with(['student', 'teacher', 'feePlan'])
+                ->with(['branch', 'student', 'teacher', 'feePlan'])
                 ->orderByDesc('id')
                 ->get(),
         ]);
@@ -24,7 +32,32 @@ class EnrollmentController extends Controller
 
     public function create(): View
     {
+        $branches = Branch::query()
+            ->where('active', true)
+            ->orderBy('name')
+            ->get();
+
+        $branchRoomNumbers = [];
+        foreach ($branches as $b) {
+            $numbers = Room::query()
+                ->where('branch_id', $b->id)
+                ->where('active', true)
+                ->orderBy('number')
+                ->pluck('number')
+                ->map(fn ($n) => (int) $n)
+                ->values()
+                ->all();
+
+            if (count($numbers) === 0) {
+                $numbers = range(1, max(1, (int) $b->classrooms_count));
+            }
+
+            $branchRoomNumbers[(int) $b->id] = $numbers;
+        }
+
         return view('management.enrollments.create', [
+            'branches' => $branches,
+            'branchRoomNumbers' => $branchRoomNumbers,
             'students' => User::query()->where('role', 'student')->orderBy('name')->get(),
             'teachers' => User::query()->where('role', 'teacher')->orderBy('name')->get(),
             'feePlans' => FeePlan::query()->where('active', true)->orderBy('name')->get(),
@@ -34,11 +67,15 @@ class EnrollmentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id', 'required_with:preferred_room_number'],
             'student_id' => ['required', 'integer', 'exists:users,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'fee_plan_id' => ['required', 'integer', 'exists:fee_plans,id'],
             'minutes_per_lesson' => ['required', 'integer', 'in:30,45,60'],
+            'interval_weeks' => ['required', 'integer', 'in:1,2'],
             'started_on' => ['nullable', 'date'],
+            'preferred_start_time' => ['nullable', 'date_format:H:i'],
+            'preferred_room_number' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         $student = User::findOrFail($validated['student_id']);
@@ -59,14 +96,150 @@ class EnrollmentController extends Controller
             abort_unless(in_array($minutes, $feePlan->allow_half_hour ? [30, 60] : [60], true), 422);
         }
 
-        Enrollment::create([
-            'student_id' => (int) $validated['student_id'],
-            'teacher_id' => $validated['teacher_id'] ? (int) $validated['teacher_id'] : null,
-            'fee_plan_id' => (int) $validated['fee_plan_id'],
-            'minutes_per_lesson' => $minutes,
-            'status' => 'active',
-            'started_on' => $validated['started_on'] ?? null,
-        ]);
+        $createdCycleId = null;
+
+        DB::transaction(function () use ($validated, $feePlan, $minutes, &$createdCycleId): void {
+            $intervalWeeks = (int) $validated['interval_weeks'];
+            $defaultLessonsPerCycle = (int) $feePlan->lessons_per_cycle;
+            $lessonsPerCycle = max(1, (int) ceil($defaultLessonsPerCycle / max(1, $intervalWeeks)));
+
+            $baseCycleFeeCents = (int) $feePlan->cycle_fee_cents;
+            if ($minutes === 30 && (int) $feePlan->minutes_per_lesson_default === 60 && $feePlan->allow_half_hour) {
+                $baseCycleFeeCents = (int) round($baseCycleFeeCents / 2);
+            }
+
+            // Pro-rate cycle fee by reduced lesson count when interval is 2 weeks.
+            $cycleFeeCents = (int) round($baseCycleFeeCents * ($lessonsPerCycle / max(1, $defaultLessonsPerCycle)));
+
+            $time = $validated['preferred_start_time'] ?? '14:00';
+            $startsOn = $validated['started_on'] ?? now()->addDay()->toDateString();
+
+            $enrollment = Enrollment::create([
+                'branch_id' => $validated['branch_id'] ? (int) $validated['branch_id'] : null,
+                'student_id' => (int) $validated['student_id'],
+                'teacher_id' => $validated['teacher_id'] ? (int) $validated['teacher_id'] : null,
+                'fee_plan_id' => (int) $validated['fee_plan_id'],
+                'minutes_per_lesson' => $minutes,
+                'interval_weeks' => $intervalWeeks,
+                'status' => 'active',
+                'started_on' => $startsOn,
+                'preferred_start_time' => $time,
+            ]);
+
+            $cycleNumber = 1;
+
+            $cycle = Cycle::create([
+                'enrollment_id' => $enrollment->id,
+                'cycle_fee_cents' => max(0, $cycleFeeCents),
+                'lessons_per_cycle' => $lessonsPerCycle,
+                'minutes_per_lesson' => $minutes,
+                'interval_weeks' => $intervalWeeks,
+                'cycle_minutes_total' => $lessonsPerCycle * $minutes,
+                'cycle_number' => $cycleNumber,
+                'status' => Cycle::STATUS_AWAITING_STUDENT_PAYMENT,
+                'starts_on' => $startsOn,
+            ]);
+            $createdCycleId = $cycle->id;
+
+            // Create lessons immediately so the Schedule shows something right after enrollment.
+            $startAt = Carbon::parse($startsOn.' '.$time);
+            $preferredRoomNumber = isset($validated['preferred_room_number']) && $validated['preferred_room_number'] !== null
+                ? (int) $validated['preferred_room_number']
+                : null;
+
+            for ($i = 1; $i <= $lessonsPerCycle; $i++) {
+                $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
+                $lessonEnd = $lessonStart->copy()->addMinutes($minutes);
+
+                $branchId = $enrollment->branch_id ? (int) $enrollment->branch_id : null;
+                $roomNumber = 1;
+                if ($branchId) {
+                    $roomNumbers = Room::query()
+                        ->where('branch_id', $branchId)
+                        ->where('active', true)
+                        ->orderBy('number')
+                        ->pluck('number')
+                        ->map(fn ($n) => (int) $n)
+                        ->values()
+                        ->all();
+
+                    if (count($roomNumbers) === 0) {
+                        $roomNumbers = range(1, max(1, (int) (Branch::find($branchId)?->classrooms_count ?? 1)));
+                    }
+
+                    if ($preferredRoomNumber !== null) {
+                        if (! in_array($preferredRoomNumber, $roomNumbers, true)) {
+                            throw ValidationException::withMessages([
+                                'preferred_room_number' => 'Selected room does not exist for this branch. Please choose another room.',
+                            ]);
+                        }
+
+                        $occupied = Lesson::query()
+                            ->where('status', '!=', Lesson::STATUS_CANCELLED)
+                            ->where('classroom_number', $preferredRoomNumber)
+                            ->where('scheduled_start_at', '<', $lessonEnd)
+                            ->where('scheduled_end_at', '>', $lessonStart)
+                            ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                            ->exists();
+
+                        if ($occupied) {
+                            throw ValidationException::withMessages([
+                                'preferred_room_number' => "Room {$preferredRoomNumber} is occupied for {$lessonStart->format('j/n/Y H:i')}–{$lessonEnd->format('H:i')}. Please choose another room or time.",
+                            ]);
+                        }
+
+                        $roomNumber = $preferredRoomNumber;
+                    } else {
+                    $roomNumber = 0;
+                    foreach ($roomNumbers as $r) {
+                        $occupied = Lesson::query()
+                            ->where('status', '!=', Lesson::STATUS_CANCELLED)
+                            ->where('classroom_number', $r)
+                            ->where('scheduled_start_at', '<', $lessonEnd)
+                            ->where('scheduled_end_at', '>', $lessonStart)
+                            ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                            ->exists();
+
+                        if (! $occupied) {
+                            $roomNumber = $r;
+                            break;
+                        }
+                    }
+
+                    if ($roomNumber <= 0) {
+                        throw ValidationException::withMessages([
+                            'preferred_start_time' => 'No classroom available for this time slot. Please choose another time or add more rooms.',
+                        ]);
+                    }
+                    }
+                }
+
+                Lesson::create([
+                    'cycle_id' => $cycle->id,
+                    'student_id' => $enrollment->student_id,
+                    'teacher_id' => $enrollment->teacher_id,
+                    'classroom_number' => $roomNumber,
+                    'scheduled_start_at' => $lessonStart,
+                    'scheduled_end_at' => $lessonEnd,
+                    'minutes' => $minutes,
+                    'status' => Lesson::STATUS_SCHEDULED,
+                    'sequence_in_cycle' => $i,
+                    'cycle_size' => $lessonsPerCycle,
+                ]);
+            }
+        });
+
+        if ($createdCycleId) {
+            DB::afterCommit(function () use ($createdCycleId): void {
+                $cycle = Cycle::query()->with(['enrollment.student', 'enrollment.feePlan', 'additionalCharges', 'invoice'])->find($createdCycleId);
+                if (! $cycle) {
+                    return;
+                }
+                $service = app(InvoiceService::class);
+                $invoice = $service->createOrUpdateForCycle($cycle);
+                $service->sendToStudent($invoice);
+            });
+        }
 
         return redirect()->route('management.enrollments.index');
     }

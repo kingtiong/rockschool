@@ -23,7 +23,12 @@
                                 @foreach($teachers as $teacher)
                                     @php $unpaid = (int) ($unpaidTotals[$teacher->id] ?? 0); @endphp
                                     <tr>
-                                        <td class="px-4 py-3 text-sm text-gray-800 font-medium">{{ $teacher->name }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-800 font-medium">
+                                            <div>{{ $teacher->name }}</div>
+                                            <div class="text-xs">
+                                                <a class="underline text-indigo-600 hover:text-indigo-900" href="{{ route('management.teachers.statement', $teacher) }}">{{ __('Full statement') }}</a>
+                                            </div>
+                                        </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">RM {{ number_format($unpaid / 100, 2) }}</td>
                                         <td class="px-4 py-3 text-right">
                                             @if($unpaid > 0)
@@ -65,15 +70,16 @@
                                         <td class="px-4 py-3 text-sm"><x-status-badge :status="$payout->status" /></td>
                                         <td class="px-4 py-3 text-sm text-gray-700">{{ $payout->reference ?? '—' }}</td>
                                         <td class="px-4 py-3 text-right text-sm">
-                                            @if($payout->status === 'pending')
-                                                <form method="POST" action="{{ route('management.payouts.mark-paid', $payout) }}" class="flex justify-end items-center gap-2">
-                                                    @csrf
-                                                    <input name="reference" type="text" class="hidden lg:block border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" placeholder="{{ __('Reference (optional)') }}" />
-                                                    <x-primary-button>{{ __('Mark paid') }}</x-primary-button>
-                                                </form>
-                                            @else
-                                                <span class="text-gray-400">—</span>
-                                            @endif
+                                            <div class="flex justify-end items-center gap-3">
+                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('management.payouts.show', $payout) }}">{{ __('Statement') }}</a>
+                                                @if($payout->status === 'pending')
+                                                    <form method="POST" action="{{ route('management.payouts.mark-paid', $payout) }}" class="flex justify-end items-center gap-2">
+                                                        @csrf
+                                                        <input name="reference" type="text" class="hidden lg:block border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" placeholder="{{ __('Reference (optional)') }}" />
+                                                        <x-primary-button>{{ __('Mark paid') }}</x-primary-button>
+                                                    </form>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

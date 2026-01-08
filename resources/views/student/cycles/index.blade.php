@@ -17,6 +17,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Cycle') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Amount') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Invoice') }}</th>
                                     <th class="px-4 py-3"></th>
                                 </tr>
                             </thead>
@@ -30,10 +31,21 @@
                                             #{{ $cycle->cycle_number }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-700">
-                                            RM {{ number_format($cycle->cycle_fee_cents / 100, 2) }}
+                                            @php($chargesCents = (int) ($cycle->additionalCharges?->sum('amount_cents') ?? 0))
+                                            @php($totalCents = (int) $cycle->cycle_fee_cents + $chargesCents)
+                                            RM {{ number_format($totalCents / 100, 2) }}
                                         </td>
                                         <td class="px-4 py-3 text-sm">
                                             <x-status-badge :status="$cycle->status" />
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-700">
+                                            @if($cycle->invoice)
+                                                <a class="underline text-sm text-indigo-600 hover:text-indigo-900" href="{{ route('invoices.show', $cycle->invoice) }}">
+                                                    {{ $cycle->invoice->invoice_number }}
+                                                </a>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-right text-sm">
                                             @if(in_array($cycle->status, ['awaiting_student_payment','payment_submitted'], true))
@@ -47,7 +59,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No cycles yet.') }}</td>
+                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">{{ __('No cycles yet.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

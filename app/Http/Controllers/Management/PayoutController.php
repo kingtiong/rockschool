@@ -8,6 +8,7 @@ use App\Models\TeacherPayout;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -81,5 +82,50 @@ class PayoutController extends Controller
         });
 
         return redirect()->route('management.payouts.index');
+    }
+
+    public function show(Request $request, TeacherPayout $payout): View
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        $payout->loadMissing(['teacher', 'createdBy']);
+
+        $earnings = TeacherEarning::query()
+            ->with(['lesson.student', 'lesson.cycle.enrollment.feePlan'])
+            ->where('teacher_payout_id', $payout->id)
+            ->get()
+            ->sortBy(fn (TeacherEarning $e) => $e->lesson?->scheduled_start_at?->timestamp ?? 0)
+            ->values();
+
+        return view('management.payouts.show', [
+            'payout' => $payout,
+            'earnings' => $earnings,
+        ]);
+    }
+
+    public function download(Request $request, TeacherPayout $payout): Response
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        $payout->loadMissing(['teacher', 'createdBy']);
+        $earnings = TeacherEarning::query()
+            ->with(['lesson.student', 'lesson.cycle.enrollment.feePlan'])
+            ->where('teacher_payout_id', $payout->id)
+            ->get()
+            ->sortBy(fn (TeacherEarning $e) => $e->lesson?->scheduled_start_at?->timestamp ?? 0)
+            ->values();
+
+        $html = view('management.payouts.show', [
+            'payout' => $payout,
+            'earnings' => $earnings,
+            'download' => true,
+        ])->render();
+
+        return response($html, 200, [
+            'Content-Type' => 'text/html; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="payout-'.$payout->id.'.html"',
+        ]);
     }
 }

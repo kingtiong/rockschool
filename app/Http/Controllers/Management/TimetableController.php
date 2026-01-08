@@ -541,7 +541,8 @@ class TimetableController extends Controller
                         ->where('classroom_number', $r)
                         ->where('scheduled_start_at', '<', $requestedEndAt)
                         ->where('scheduled_end_at', '>', $requestedStartAt)
-                        ->whereIn('status', [Lesson::STATUS_SCHEDULED, Lesson::STATUS_POSTPONED])
+                        // Any non-cancelled lesson blocks the room.
+                        ->where('status', '!=', Lesson::STATUS_CANCELLED)
                         ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
                         ->exists();
 

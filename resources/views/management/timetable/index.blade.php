@@ -191,7 +191,7 @@
                             </div>
                             <!-- Header row: dates -->
                             <div class="grid sticky top-0 z-30 bg-gray-50 border-b border-gray-200" style="{{ $gridColsStyle }}">
-                                <div class="border-r border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50">
+                                <div class="border-r border-gray-200 px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 z-40 bg-white">
                                     {{ __('Time') }}
                                 </div>
                                 @foreach($dates as $d)
@@ -217,7 +217,7 @@
                                     $timeKey = $t->format('H:i');
                                 @endphp
                                 <div class="grid border-b border-gray-100 {{ $i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50' }}" style="{{ $gridColsStyle }}">
-                                    <div id="time-{{ str_replace(':','-',$timeKey) }}" class="border-r border-gray-200 px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 bg-white">
+                                    <div id="time-{{ str_replace(':','-',$timeKey) }}" class="border-r border-gray-200 px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap sticky left-0 z-30 bg-white">
                                         {{ $fmt($t) }}-{{ $fmt($t->copy()->addMinutes($slotMinutes)) }}
                                     </div>
                                     @foreach($dates as $d)

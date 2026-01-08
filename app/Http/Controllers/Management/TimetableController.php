@@ -500,8 +500,60 @@ class TimetableController extends Controller
         ]);
 
         $requestedStartAt = Carbon::parse($validated['requested_start_at']);
+        $minutes = (int) ($lesson->minutes ?? 60);
+        $requestedEndAt = $requestedStartAt->copy()->addMinutes($minutes);
 
-        DB::transaction(function () use ($lesson, $user, $requestedStartAt, $validated): void {
+        $lesson->loadMissing('cycle.enrollment.branch');
+        $branchId = $lesson->cycle?->enrollment?->branch_id ? (int) $lesson->cycle->enrollment->branch_id : null;
+
+        $roomNumbers = [];
+        if ($branchId) {
+            $roomNumbers = Room::query()
+                ->where('branch_id', $branchId)
+                ->where('active', true)
+                ->orderBy('number')
+                ->pluck('number')
+                ->map(fn ($n) => (int) $n)
+                ->values()
+                ->all();
+
+            if (count($roomNumbers) === 0) {
+                $count = (int) ($lesson->cycle?->enrollment?->branch?->classrooms_count ?? 1);
+                $roomNumbers = range(1, max(1, $count));
+            }
+        }
+
+        DB::transaction(function () use ($lesson, $user, $requestedStartAt, $requestedEndAt, $validated, $branchId, $roomNumbers): void {
+            // Lock the lesson row while we check room conflicts.
+            $lesson = Lesson::query()->lockForUpdate()->findOrFail($lesson->id);
+
+            $assignedRoom = (int) ($lesson->classroom_number ?? 1);
+            $assignedRoom = max(1, $assignedRoom);
+
+            if ($branchId && count($roomNumbers) > 0) {
+                // Try current room first, then other rooms.
+                $tryRooms = array_values(array_unique(array_merge([$assignedRoom], $roomNumbers)));
+                $assignedRoom = 0;
+
+                foreach ($tryRooms as $r) {
+                    $occupied = Lesson::query()
+                        ->where('id', '!=', $lesson->id)
+                        ->where('classroom_number', $r)
+                        ->where('scheduled_start_at', '<', $requestedEndAt)
+                        ->where('scheduled_end_at', '>', $requestedStartAt)
+                        ->whereIn('status', [Lesson::STATUS_SCHEDULED, Lesson::STATUS_POSTPONED])
+                        ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                        ->exists();
+
+                    if (! $occupied) {
+                        $assignedRoom = (int) $r;
+                        break;
+                    }
+                }
+
+                abort_unless($assignedRoom > 0, 422, 'All rooms are full for this time slot.');
+            }
+
             RescheduleRequest::create([
                 'lesson_id' => $lesson->id,
                 'requested_by_user_id' => $user->id,
@@ -515,8 +567,9 @@ class TimetableController extends Controller
 
             $lesson->update([
                 'scheduled_start_at' => $requestedStartAt,
-                'scheduled_end_at' => $requestedStartAt->copy()->addMinutes($lesson->minutes),
-                'status' => Lesson::STATUS_POSTPONED,
+                'scheduled_end_at' => $requestedEndAt,
+                'classroom_number' => $branchId ? $assignedRoom : ($lesson->classroom_number ?? 1),
+                'status' => Lesson::STATUS_SCHEDULED,
             ]);
         });
 

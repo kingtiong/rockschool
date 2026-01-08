@@ -32,8 +32,32 @@ class EnrollmentController extends Controller
 
     public function create(): View
     {
+        $branches = Branch::query()
+            ->where('active', true)
+            ->orderBy('name')
+            ->get();
+
+        $branchRoomNumbers = [];
+        foreach ($branches as $b) {
+            $numbers = Room::query()
+                ->where('branch_id', $b->id)
+                ->where('active', true)
+                ->orderBy('number')
+                ->pluck('number')
+                ->map(fn ($n) => (int) $n)
+                ->values()
+                ->all();
+
+            if (count($numbers) === 0) {
+                $numbers = range(1, max(1, (int) $b->classrooms_count));
+            }
+
+            $branchRoomNumbers[(int) $b->id] = $numbers;
+        }
+
         return view('management.enrollments.create', [
-            'branches' => Branch::query()->where('active', true)->orderBy('name')->get(),
+            'branches' => $branches,
+            'branchRoomNumbers' => $branchRoomNumbers,
             'students' => User::query()->where('role', 'student')->orderBy('name')->get(),
             'teachers' => User::query()->where('role', 'teacher')->orderBy('name')->get(),
             'feePlans' => FeePlan::query()->where('active', true)->orderBy('name')->get(),
@@ -43,7 +67,7 @@ class EnrollmentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id', 'required_with:preferred_room_number'],
             'student_id' => ['required', 'integer', 'exists:users,id'],
             'teacher_id' => ['nullable', 'integer', 'exists:users,id'],
             'fee_plan_id' => ['required', 'integer', 'exists:fee_plans,id'],
@@ -51,6 +75,7 @@ class EnrollmentController extends Controller
             'interval_weeks' => ['required', 'integer', 'in:1,2'],
             'started_on' => ['nullable', 'date'],
             'preferred_start_time' => ['nullable', 'date_format:H:i'],
+            'preferred_room_number' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         $student = User::findOrFail($validated['student_id']);
@@ -118,6 +143,9 @@ class EnrollmentController extends Controller
 
             // Create lessons immediately so the Schedule shows something right after enrollment.
             $startAt = Carbon::parse($startsOn.' '.$time);
+            $preferredRoomNumber = isset($validated['preferred_room_number']) && $validated['preferred_room_number'] !== null
+                ? (int) $validated['preferred_room_number']
+                : null;
 
             for ($i = 1; $i <= $lessonsPerCycle; $i++) {
                 $lessonStart = $startAt->copy()->addWeeks(($i - 1) * $intervalWeeks);
@@ -139,9 +167,33 @@ class EnrollmentController extends Controller
                         $roomNumbers = range(1, max(1, (int) (Branch::find($branchId)?->classrooms_count ?? 1)));
                     }
 
+                    if ($preferredRoomNumber !== null) {
+                        if (! in_array($preferredRoomNumber, $roomNumbers, true)) {
+                            throw ValidationException::withMessages([
+                                'preferred_room_number' => 'Selected room does not exist for this branch. Please choose another room.',
+                            ]);
+                        }
+
+                        $occupied = Lesson::query()
+                            ->where('status', '!=', Lesson::STATUS_CANCELLED)
+                            ->where('classroom_number', $preferredRoomNumber)
+                            ->where('scheduled_start_at', '<', $lessonEnd)
+                            ->where('scheduled_end_at', '>', $lessonStart)
+                            ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                            ->exists();
+
+                        if ($occupied) {
+                            throw ValidationException::withMessages([
+                                'preferred_room_number' => "Room {$preferredRoomNumber} is occupied for {$lessonStart->format('j/n/Y H:i')}–{$lessonEnd->format('H:i')}. Please choose another room or time.",
+                            ]);
+                        }
+
+                        $roomNumber = $preferredRoomNumber;
+                    } else {
                     $roomNumber = 0;
                     foreach ($roomNumbers as $r) {
                         $occupied = Lesson::query()
+                            ->where('status', '!=', Lesson::STATUS_CANCELLED)
                             ->where('classroom_number', $r)
                             ->where('scheduled_start_at', '<', $lessonEnd)
                             ->where('scheduled_end_at', '>', $lessonStart)
@@ -158,6 +210,7 @@ class EnrollmentController extends Controller
                         throw ValidationException::withMessages([
                             'preferred_start_time' => 'No classroom available for this time slot. Please choose another time or add more rooms.',
                         ]);
+                    }
                     }
                 }
 

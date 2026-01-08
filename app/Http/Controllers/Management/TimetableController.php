@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TimetableController extends Controller
@@ -552,7 +553,11 @@ class TimetableController extends Controller
                     }
                 }
 
-                abort_unless($assignedRoom > 0, 422, 'All rooms are full for this time slot.');
+                if ($assignedRoom <= 0) {
+                    throw ValidationException::withMessages([
+                        'requested_start_at' => 'All rooms are full for this time slot.',
+                    ]);
+                }
             }
 
             RescheduleRequest::create([

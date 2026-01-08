@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class EnrollmentController extends Controller
@@ -153,7 +154,11 @@ class EnrollmentController extends Controller
                         }
                     }
 
-                    abort_unless($roomNumber > 0, 422, 'No classroom available for this time slot.');
+                    if ($roomNumber <= 0) {
+                        throw ValidationException::withMessages([
+                            'preferred_start_time' => 'No classroom available for this time slot. Please choose another time or add more rooms.',
+                        ]);
+                    }
                 }
 
                 Lesson::create([

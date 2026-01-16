@@ -166,6 +166,27 @@
                     <div class="text-xs text-gray-500">
                         {{ __('Showing time slots 8:00–22:00 (30 minutes). If you don’t see classes, click “Jump to first class time”.') }}
                     </div>
+                    <div class="flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                        <span class="font-medium text-gray-700">{{ __('Legend:') }}</span>
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>{{ __('Online class') }}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>{{ __('Personal to do list') }}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>{{ __('Replacement class') }}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-teal-500"></span>{{ __('New student first class') }}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>{{ __('KIV not finalise') }}
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>{{ __('Original class') }}
+                        </span>
+                    </div>
 
                     @php
                         $slotTotal = $slotTotal ?? 28;
@@ -235,6 +256,49 @@
                                             <div class="border-r border-gray-100 px-2 py-1 relative overflow-visible {{ $colBg }} {{ $covered && ! $lesson ? 'pointer-events-none' : '' }}" style="min-height: {{ $rowH }}px;">
                                                 @if($lesson)
                                                     @php
+                                                        $roomLabel = (string) ($roomNameByNumber[$room] ?? '');
+                                                        $studentName = strtolower((string) ($lesson->student?->name ?? ''));
+                                                        $isPersonalTodo = $studentName !== '' && (
+                                                            str_contains($studentName, 'todo')
+                                                            || str_contains($studentName, 'to do')
+                                                            || str_contains($studentName, 'to-do')
+                                                        );
+                                                        $isOnline = $roomLabel !== '' && str_contains(strtolower($roomLabel), 'online');
+                                                        $isReplacement = in_array($lesson->id, $replacementLessonIds ?? [], true);
+                                                        $isKiv = in_array($lesson->id, $pendingRequestLessonIds ?? [], true);
+                                                        $firstAt = $firstLessonAtByStudent[$lesson->student_id ?? 0] ?? null;
+                                                        $isFirstClass = $firstAt
+                                                            && $lesson->scheduled_start_at
+                                                            && $lesson->scheduled_start_at->format('Y-m-d H:i:s') === $firstAt
+                                                            && (int) $lesson->sequence_in_cycle === 1;
+                                                        $cardTone = 'original';
+                                                        if ($isPersonalTodo) {
+                                                            $cardTone = 'todo';
+                                                        } elseif ($isKiv) {
+                                                            $cardTone = 'kiv';
+                                                        } elseif ($isReplacement) {
+                                                            $cardTone = 'replacement';
+                                                        } elseif ($isFirstClass) {
+                                                            $cardTone = 'first';
+                                                        } elseif ($isOnline) {
+                                                            $cardTone = 'online';
+                                                        }
+                                                        $cardClasses = match ($cardTone) {
+                                                            'online' => 'border-purple-200 bg-purple-50',
+                                                            'todo' => 'border-red-200 bg-red-50',
+                                                            'replacement' => 'border-green-200 bg-green-50',
+                                                            'first' => 'border-teal-200 bg-teal-50',
+                                                            'kiv' => 'border-lime-200 bg-lime-50',
+                                                            default => 'border-gray-200 bg-white',
+                                                        };
+                                                        $accentTextClass = match ($cardTone) {
+                                                            'online' => 'text-purple-700',
+                                                            'todo' => 'text-red-700',
+                                                            'replacement' => 'text-green-700',
+                                                            'first' => 'text-teal-700',
+                                                            'kiv' => 'text-lime-700',
+                                                            default => 'text-gray-700',
+                                                        };
                                                         $payload = [
                                                             'id' => (int) $lesson->id,
                                                             'student' => $lesson->student?->name ?? '—',
@@ -249,21 +313,21 @@
                                                             'reschedule_action' => route('management.timetable.lessons.reschedule.update', $lesson),
                                                             'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
                                                             'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
-                                                            'cancel_action' => route('management.timetable.lessons.cancel', $lesson),
+                                                            'undo_postpone_action' => route('management.timetable.lessons.postpone.undo', $lesson),
                                                             'span' => (int) $span,
                                                         ];
                                                     @endphp
                                                     <div
-                                                        class="js-lesson-card absolute inset-x-1 top-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 overflow-hidden cursor-pointer z-20 pointer-events-auto"
+                                                        class="js-lesson-card absolute inset-x-1 top-1 rounded-md border px-2 py-1 overflow-hidden cursor-pointer z-20 pointer-events-auto {{ $cardClasses }}"
                                                         style="height: calc({{ $rowH }}px * {{ max(1, (int) $span) }} - 6px);"
                                                         data-lesson='@json($payload)'
                                                     >
                                                         @if($lesson->sequence_in_cycle)
-                                                            <div class="absolute top-1 right-1 text-[10px] font-semibold text-indigo-700 bg-white/70 px-1 rounded">
+                                                            <div class="absolute top-1 right-1 text-[10px] font-semibold {{ $accentTextClass }} bg-white/70 px-1 rounded">
                                                                 {{ $lesson->sequence_in_cycle }}/{{ $lesson->cycle_size }}
                                                             </div>
                                                         @endif
-                                                        <div class="text-[11px] text-indigo-700 font-medium leading-tight">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
+                                                        <div class="text-[11px] font-medium leading-tight {{ $accentTextClass }}">{{ $lesson->scheduled_start_at?->format('g:i A') }}–{{ $lesson->scheduled_end_at?->format('g:i A') }}</div>
                                                         <div class="text-sm font-semibold text-gray-900 leading-tight">{{ $lesson->student?->name ?? '—' }}</div>
                                                         <div class="text-[11px] text-gray-700 leading-tight">{{ $lesson->teacher?->name ?? '—' }}</div>
                                                         <div class="mt-1 text-[11px] text-gray-500">{{ __('Click for actions') }}</div>
@@ -298,10 +362,10 @@
             </div>
 
             <div id="lesson-actions-menu" class="flex flex-col gap-2">
-                <button type="button" id="lesson-actions-btn-reschedule" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">{{ __('Reschedule') }}</button>
+                <button type="button" id="lesson-actions-btn-reschedule" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">{{ __('Replacement') }}</button>
                 <button type="button" id="lesson-actions-btn-teacher" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{{ __('Change teacher (this class only)') }}</button>
                 <button type="button" id="lesson-actions-btn-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700">{{ __('Postpone + shift cycle') }}</button>
-                <button type="button" id="lesson-actions-btn-cancel" class="w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">{{ __('Cancel this lesson only') }}</button>
+                <button type="button" id="lesson-actions-btn-undo-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-lime-600 text-white rounded-md text-sm hover:bg-lime-700">{{ __('Undo postpone') }}</button>
             </div>
 
             <div id="lesson-actions-reschedule" class="hidden space-y-3">
@@ -322,7 +386,7 @@
                         <input type="hidden" name="reason" id="lesson-actions-reschedule-hidden-reason">
                         <input type="hidden" name="day" id="lesson-actions-day-1">
                         <input type="hidden" name="branch_id" id="lesson-actions-branch-1">
-                        <x-primary-button>{{ __('Save reschedule') }}</x-primary-button>
+                        <x-primary-button>{{ __('Save replacement') }}</x-primary-button>
                     </form>
                 </div>
             </div>
@@ -368,15 +432,15 @@
                 </div>
             </div>
 
-            <div id="lesson-actions-cancel" class="hidden space-y-4">
-                <div class="text-sm text-gray-700">{{ __('This will cancel only this lesson (no shifting).') }}</div>
+            <div id="lesson-actions-undo-postpone" class="hidden space-y-4">
+                <div class="text-sm text-gray-700">{{ __('This will undo the postpone and shift the cycle back by 1 week.') }}</div>
                 <div class="flex items-center justify-between gap-3">
                     <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-4">{{ __('Back') }}</button>
-                    <form id="lesson-actions-cancel-form" method="POST" onsubmit="return confirm('{{ __('Cancel only this lesson?') }}')">
+                    <form id="lesson-actions-undo-postpone-form" method="POST" onsubmit="return confirm('{{ __('Undo postpone and shift the cycle back by 1 week?') }}')">
                         @csrf
                         <input type="hidden" name="day" id="lesson-actions-day-4">
                         <input type="hidden" name="branch_id" id="lesson-actions-branch-4">
-                        <x-danger-button>{{ __('Confirm cancel') }}</x-danger-button>
+                        <x-primary-button class="bg-lime-600 hover:bg-lime-700 focus:ring-lime-500">{{ __('Confirm undo') }}</x-primary-button>
                     </form>
                 </div>
             </div>
@@ -420,12 +484,12 @@
     var paneReschedule = document.getElementById('lesson-actions-reschedule');
     var paneTeacher = document.getElementById('lesson-actions-teacher');
     var panePostpone = document.getElementById('lesson-actions-postpone');
-    var paneCancel = document.getElementById('lesson-actions-cancel');
+    var paneUndoPostpone = document.getElementById('lesson-actions-undo-postpone');
 
     var btnReschedule = document.getElementById('lesson-actions-btn-reschedule');
     var btnTeacher = document.getElementById('lesson-actions-btn-teacher');
     var btnPostpone = document.getElementById('lesson-actions-btn-postpone');
-    var btnCancel = document.getElementById('lesson-actions-btn-cancel');
+    var btnUndoPostpone = document.getElementById('lesson-actions-btn-undo-postpone');
 
     var back1 = document.getElementById('lesson-actions-back-1');
     var back2 = document.getElementById('lesson-actions-back-2');
@@ -449,7 +513,7 @@
     var branch2 = document.getElementById('lesson-actions-branch-2');
 
     var postponeForm = document.getElementById('lesson-actions-postpone-form');
-    var cancelForm = document.getElementById('lesson-actions-cancel-form');
+    var undoPostponeForm = document.getElementById('lesson-actions-undo-postpone-form');
     var day3 = document.getElementById('lesson-actions-day-3');
     var branch3 = document.getElementById('lesson-actions-branch-3');
     var day4 = document.getElementById('lesson-actions-day-4');
@@ -460,12 +524,12 @@
       paneReschedule.classList.add('hidden');
       paneTeacher.classList.add('hidden');
       panePostpone.classList.add('hidden');
-      paneCancel.classList.add('hidden');
+      paneUndoPostpone.classList.add('hidden');
       if (which === 'menu') menu.classList.remove('hidden');
       if (which === 'reschedule') paneReschedule.classList.remove('hidden');
       if (which === 'teacher') paneTeacher.classList.remove('hidden');
       if (which === 'postpone') panePostpone.classList.remove('hidden');
-      if (which === 'cancel') paneCancel.classList.remove('hidden');
+      if (which === 'undo-postpone') paneUndoPostpone.classList.remove('hidden');
     }
 
     function openModal(payload) {
@@ -473,7 +537,7 @@
       resForm.action = payload.reschedule_action || '';
       teacherForm.action = payload.teacher_action || '';
       postponeForm.action = payload.postpone_action || '';
-      cancelForm.action = payload.cancel_action || '';
+      undoPostponeForm.action = payload.undo_postpone_action || '';
       resAt.value = payload.scheduled_start_local || '';
       teacherId.value = payload.teacher_id ? String(payload.teacher_id) : '';
       resReason.value = '';
@@ -519,7 +583,7 @@
     btnReschedule.addEventListener('click', function () { showPane('reschedule'); });
     btnTeacher.addEventListener('click', function () { showPane('teacher'); });
     btnPostpone.addEventListener('click', function () { showPane('postpone'); });
-    btnCancel.addEventListener('click', function () { showPane('cancel'); });
+    btnUndoPostpone.addEventListener('click', function () { showPane('undo-postpone'); });
     back1.addEventListener('click', function () { showPane('menu'); });
     back2.addEventListener('click', function () { showPane('menu'); });
     back3.addEventListener('click', function () { showPane('menu'); });

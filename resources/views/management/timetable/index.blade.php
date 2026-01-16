@@ -365,7 +365,7 @@
                 <button type="button" id="lesson-actions-btn-reschedule" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">{{ __('Replacement') }}</button>
                 <button type="button" id="lesson-actions-btn-teacher" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{{ __('Change teacher (this class only)') }}</button>
                 <button type="button" id="lesson-actions-btn-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700">{{ __('Postpone + shift cycle') }}</button>
-                <button type="button" id="lesson-actions-btn-undo-postpone" class="hidden w-full inline-flex items-center justify-center px-4 py-2 bg-lime-600 text-white rounded-md text-sm hover:bg-lime-700">{{ __('Undo postpone') }}</button>
+                <button type="button" id="lesson-actions-btn-undo-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-lime-600 text-white rounded-md text-sm hover:bg-lime-700">{{ __('Undo postpone') }}</button>
             </div>
 
             <div id="lesson-actions-reschedule" class="hidden space-y-3">
@@ -542,10 +542,6 @@
       teacherId.value = payload.teacher_id ? String(payload.teacher_id) : '';
       resReason.value = '';
       teacherReason.value = '';
-
-      var isPostponed = payload.status === 'postponed';
-      btnPostpone.classList.toggle('hidden', isPostponed);
-      btnUndoPostpone.classList.toggle('hidden', !isPostponed);
 
       var params = new URLSearchParams(window.location.search);
       var day = params.get('day') || '';

@@ -497,6 +497,14 @@ class TimetableController extends Controller
         $user = $request->user();
         abort_unless($user?->role === 'management', 403);
 
+        if ($lesson->status !== Lesson::STATUS_POSTPONED) {
+            return redirect()->route('management.timetable.index', [
+                'date' => $lesson->scheduled_start_at?->toDateString(),
+                'day' => $request->input('day'),
+                'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
+            ])->withErrors(['action' => 'Lesson is not postponed.']);
+        }
+
         DB::transaction(function () use ($lesson, $user): void {
             RescheduleRequest::create([
                 'lesson_id' => $lesson->id,

@@ -114,6 +114,60 @@ class TimetableController extends Controller
 
         $lessons = $lessonsQuery->get();
 
+        $lessonIds = $lessons->pluck('id')->filter()->values();
+        $pendingRequestLessonIds = [];
+        $replacementLessonIds = [];
+        $undoPostponeLessonIds = [];
+        if ($lessonIds->isNotEmpty()) {
+            $requests = RescheduleRequest::query()
+                ->whereIn('lesson_id', $lessonIds)
+                ->get(['lesson_id', 'status', 'requested_start_at', 'type', 'reason']);
+
+            $pendingRequestLessonIds = $requests
+                ->where('status', RescheduleRequest::STATUS_PENDING)
+                ->pluck('lesson_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            $replacementLessonIds = $requests
+                ->filter(function (RescheduleRequest $request): bool {
+                    return $request->requested_start_at !== null
+                        && in_array($request->status, [RescheduleRequest::STATUS_APPROVED, RescheduleRequest::STATUS_AUTO_APPLIED], true);
+                })
+                ->pluck('lesson_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            $undoPostponeLessonIds = $requests
+                ->filter(function (RescheduleRequest $request): bool {
+                    return $request->status === RescheduleRequest::STATUS_AUTO_APPLIED
+                        && $request->type === RescheduleRequest::TYPE_ABSENCE
+                        && $request->reason === 'Management postponed lesson';
+                })
+                ->pluck('lesson_id')
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $studentIds = $lessons->pluck('student_id')->filter()->unique()->values();
+        $firstLessonAtByStudent = [];
+        if ($studentIds->isNotEmpty()) {
+            $firstLessonAtByStudent = Lesson::query()
+                ->whereIn('student_id', $studentIds)
+                ->select('student_id', DB::raw('MIN(scheduled_start_at) as first_at'))
+                ->groupBy('student_id')
+                ->get()
+                ->mapWithKeys(function ($row): array {
+                    $firstAt = $row->first_at ? Carbon::parse($row->first_at)->format('Y-m-d H:i:s') : null;
+                    return [(int) $row->student_id => $firstAt];
+                })
+                ->filter()
+                ->all();
+        }
+
         $firstLessonTimeKey = null;
         if ($lessons->first()?->scheduled_start_at) {
             $slotStart = $lessons->first()->scheduled_start_at->copy()->second(0);
@@ -145,6 +199,9 @@ class TimetableController extends Controller
             $roomsCount = max(1, (int) ($selectedBranch?->classrooms_count ?? 1));
             $rooms = range(1, $roomsCount);
         }
+        $roomNameByNumber = $roomModels
+            ->mapWithKeys(fn (Room $room) => [(int) $room->number => (string) ($room->name ?? '')])
+            ->all();
         // Safety: if existing lessons use higher room numbers, show them too.
         $maxLessonRoom = (int) $lessons->max(function (Lesson $l) {
             return max(1, (int) ($l->classroom_number ?? 1));
@@ -227,6 +284,11 @@ class TimetableController extends Controller
             'lessonsCount' => $lessons->count(),
             'firstLessonTimeKey' => $firstLessonTimeKey,
             'teachers' => $teachers,
+            'roomNameByNumber' => $roomNameByNumber,
+            'pendingRequestLessonIds' => $pendingRequestLessonIds,
+            'replacementLessonIds' => $replacementLessonIds,
+            'undoPostponeLessonIds' => $undoPostponeLessonIds,
+            'firstLessonAtByStudent' => $firstLessonAtByStudent,
         ]);
     }
 
@@ -430,6 +492,62 @@ class TimetableController extends Controller
                 $l->update([
                     'scheduled_start_at' => $l->scheduled_start_at->copy()->addWeek(),
                     'scheduled_end_at' => $l->scheduled_end_at->copy()->addWeek(),
+                ]);
+            }
+        });
+
+        $lesson->refresh();
+
+        return redirect()->route('management.timetable.index', [
+            'date' => $lesson->scheduled_start_at?->toDateString(),
+            'day' => $request->input('day'),
+            'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
+        ]);
+    }
+
+    public function undoPostpone(Request $request, Lesson $lesson): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        DB::transaction(function () use ($lesson, $user): void {
+            RescheduleRequest::create([
+                'lesson_id' => $lesson->id,
+                'requested_by_user_id' => $user->id,
+                'type' => RescheduleRequest::TYPE_ABSENCE,
+                'requested_start_at' => null,
+                'reason' => 'Management undo postpone',
+                'status' => RescheduleRequest::STATUS_AUTO_APPLIED,
+                'decided_by_user_id' => $user->id,
+                'decided_at' => now(),
+            ]);
+
+            if ($lesson->status === Lesson::STATUS_POSTPONED) {
+                $lesson->update([
+                    'status' => Lesson::STATUS_SCHEDULED,
+                ]);
+            }
+
+            if (! $lesson->cycle_id) {
+                $lesson->update([
+                    'scheduled_start_at' => $lesson->scheduled_start_at->copy()->subWeek(),
+                    'scheduled_end_at' => $lesson->scheduled_end_at->copy()->subWeek(),
+                ]);
+                return;
+            }
+
+            $lessonsToShift = Lesson::query()
+                ->where('cycle_id', $lesson->cycle_id)
+                ->where('sequence_in_cycle', '>=', $lesson->sequence_in_cycle ?? 1)
+                ->whereIn('status', [Lesson::STATUS_SCHEDULED, Lesson::STATUS_POSTPONED])
+                ->orderBy('sequence_in_cycle')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($lessonsToShift as $l) {
+                $l->update([
+                    'scheduled_start_at' => $l->scheduled_start_at->copy()->subWeek(),
+                    'scheduled_end_at' => $l->scheduled_end_at->copy()->subWeek(),
                 ]);
             }
         });

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Reschedule Lesson') }}
+            {{ __('Replacement Lesson') }}
         </h2>
     </x-slot>
 
@@ -40,7 +40,7 @@
                         </div>
 
                         <div class="text-sm text-gray-500">
-                            {{ __('Reschedule changes only this lesson. Following weeks remain unchanged.') }}
+                            {{ __('Replacement updates only this lesson. Following weeks remain unchanged.') }}
                         </div>
 
                         <div class="flex items-center justify-end gap-3">

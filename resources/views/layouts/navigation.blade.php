@@ -139,7 +139,7 @@
                         {{ __('Payouts') }}
                     </a>
                     <a href="{{ route('management.reschedule-requests.index') }}" class="block px-3 py-2 rounded-md text-sm {{ request()->routeIs('management.reschedule-requests.*') ? 'bg-white/10 text-white' : 'text-white/80 hover:text-white hover:bg-white/10' }}">
-                        {{ __('Reschedule') }}
+                        {{ __('Replacement') }}
                     </a>
                 @endif
             </div>

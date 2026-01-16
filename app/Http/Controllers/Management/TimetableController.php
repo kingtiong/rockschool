@@ -143,8 +143,7 @@ class TimetableController extends Controller
             $undoPostponeLessonIds = $requests
                 ->filter(function (RescheduleRequest $request): bool {
                     return $request->status === RescheduleRequest::STATUS_AUTO_APPLIED
-                        && $request->type === RescheduleRequest::TYPE_ABSENCE
-                        && $request->reason === 'Management postponed lesson';
+                        && $request->type === RescheduleRequest::TYPE_ABSENCE;
                 })
                 ->pluck('lesson_id')
                 ->unique()

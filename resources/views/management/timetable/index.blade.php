@@ -314,7 +314,6 @@
                                                             'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
                                                             'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
                                                             'undo_postpone_action' => route('management.timetable.lessons.postpone.undo', $lesson),
-                                                            'can_undo_postpone' => in_array($lesson->id, $undoPostponeLessonIds ?? [], true),
                                                             'span' => (int) $span,
                                                         ];
                                                     @endphp
@@ -545,9 +544,8 @@
       teacherReason.value = '';
 
       var isPostponed = payload.status === 'postponed';
-      var canUndoPostpone = payload.can_undo_postpone === true;
-      btnPostpone.classList.toggle('hidden', isPostponed && canUndoPostpone);
-      btnUndoPostpone.classList.toggle('hidden', !isPostponed || !canUndoPostpone);
+      btnPostpone.classList.toggle('hidden', isPostponed);
+      btnUndoPostpone.classList.toggle('hidden', !isPostponed);
 
       var params = new URLSearchParams(window.location.search);
       var day = params.get('day') || '';

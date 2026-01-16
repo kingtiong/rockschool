@@ -117,11 +117,10 @@ class TimetableController extends Controller
         $lessonIds = $lessons->pluck('id')->filter()->values();
         $pendingRequestLessonIds = [];
         $replacementLessonIds = [];
-        $undoPostponeLessonIds = [];
         if ($lessonIds->isNotEmpty()) {
             $requests = RescheduleRequest::query()
                 ->whereIn('lesson_id', $lessonIds)
-                ->get(['lesson_id', 'status', 'requested_start_at', 'type', 'reason']);
+                ->get(['lesson_id', 'status', 'requested_start_at']);
 
             $pendingRequestLessonIds = $requests
                 ->where('status', RescheduleRequest::STATUS_PENDING)
@@ -134,16 +133,6 @@ class TimetableController extends Controller
                 ->filter(function (RescheduleRequest $request): bool {
                     return $request->requested_start_at !== null
                         && in_array($request->status, [RescheduleRequest::STATUS_APPROVED, RescheduleRequest::STATUS_AUTO_APPLIED], true);
-                })
-                ->pluck('lesson_id')
-                ->unique()
-                ->values()
-                ->all();
-
-            $undoPostponeLessonIds = $requests
-                ->filter(function (RescheduleRequest $request): bool {
-                    return $request->status === RescheduleRequest::STATUS_AUTO_APPLIED
-                        && $request->type === RescheduleRequest::TYPE_ABSENCE;
                 })
                 ->pluck('lesson_id')
                 ->unique()
@@ -286,7 +275,6 @@ class TimetableController extends Controller
             'roomNameByNumber' => $roomNameByNumber,
             'pendingRequestLessonIds' => $pendingRequestLessonIds,
             'replacementLessonIds' => $replacementLessonIds,
-            'undoPostponeLessonIds' => $undoPostponeLessonIds,
             'firstLessonAtByStudent' => $firstLessonAtByStudent,
         ]);
     }

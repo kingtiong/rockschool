@@ -441,7 +441,7 @@
                         @csrf
                         <input type="hidden" name="day" id="lesson-actions-day-4">
                         <input type="hidden" name="branch_id" id="lesson-actions-branch-4">
-                        <x-secondary-button>{{ __('Confirm undo') }}</x-secondary-button>
+                        <x-primary-button class="bg-lime-600 hover:bg-lime-700 focus:ring-lime-500">{{ __('Confirm undo') }}</x-primary-button>
                     </form>
                 </div>
             </div>

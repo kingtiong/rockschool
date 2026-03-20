@@ -169,22 +169,22 @@
                     <div class="flex flex-wrap items-center gap-4 text-xs text-gray-600">
                         <span class="font-medium text-gray-700">{{ __('Legend:') }}</span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>{{ __('Online class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>{{ __('Purple - Online class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>{{ __('Personal to do list') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>{{ __('Red - My personal to do list') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>{{ __('Replacement class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>{{ __('Green - Replacement (reschedule) class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-teal-500"></span>{{ __('New student first class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-cyan-500"></span>{{ __('Tiffany blue - New student first class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>{{ __('KIV not finalise') }}
+                            <span class="h-2.5 w-2.5 rounded-full border border-gray-300 bg-white"></span>{{ __('No colour - Original class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>{{ __('Original class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>{{ __('Apple green - Something not finalised yet (KIV)') }}
                         </span>
                     </div>
 
@@ -287,7 +287,7 @@
                                                             'online' => 'border-purple-200 bg-purple-50',
                                                             'todo' => 'border-red-200 bg-red-50',
                                                             'replacement' => 'border-green-200 bg-green-50',
-                                                            'first' => 'border-teal-200 bg-teal-50',
+                                                            'first' => 'border-cyan-200 bg-cyan-50',
                                                             'kiv' => 'border-lime-200 bg-lime-50',
                                                             default => 'border-gray-200 bg-white',
                                                         };
@@ -295,7 +295,7 @@
                                                             'online' => 'text-purple-700',
                                                             'todo' => 'text-red-700',
                                                             'replacement' => 'text-green-700',
-                                                            'first' => 'text-teal-700',
+                                                            'first' => 'text-cyan-700',
                                                             'kiv' => 'text-lime-700',
                                                             default => 'text-gray-700',
                                                         };

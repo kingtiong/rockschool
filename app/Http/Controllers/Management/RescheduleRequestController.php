@@ -27,11 +27,24 @@ class RescheduleRequestController extends Controller
 
         if ($rescheduleRequest->requested_start_at) {
             $lesson = $rescheduleRequest->lesson;
+            $previousStartAt = $lesson->scheduled_start_at?->format('Y-m-d H:i:s');
+            $previousEndAt = $lesson->scheduled_end_at?->format('Y-m-d H:i:s');
+            $previousRoom = (int) ($lesson->classroom_number ?? 1);
+
             $lesson->update([
                 'scheduled_start_at' => $rescheduleRequest->requested_start_at,
                 'scheduled_end_at' => $rescheduleRequest->requested_start_at->copy()->addMinutes($lesson->minutes),
                 // A confirmed replacement becomes the active class slot.
                 'status' => Lesson::STATUS_SCHEDULED,
+            ]);
+
+            $rescheduleRequest->update([
+                'decision_note' => json_encode([
+                    'previous_start_at' => $previousStartAt,
+                    'previous_end_at' => $previousEndAt,
+                    'previous_room' => $previousRoom,
+                    'replacement_room' => (int) ($lesson->classroom_number ?? 1),
+                ]),
             ]);
         }
 

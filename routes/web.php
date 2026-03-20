@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/timetable/lessons/{lesson}/cancel', [ManagementTimetableController::class, 'cancel'])->name('timetable.lessons.cancel');
         Route::get('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'editReschedule'])->name('timetable.lessons.reschedule.edit');
         Route::put('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'updateReschedule'])->name('timetable.lessons.reschedule.update');
+        Route::post('/timetable/lessons/{lesson}/reschedule/undo', [ManagementTimetableController::class, 'undoReschedule'])->name('timetable.lessons.reschedule.undo');
         Route::get('/timetable/lessons/{lesson}/teacher', [ManagementTimetableController::class, 'editTeacher'])->name('timetable.lessons.teacher.edit');
         Route::put('/timetable/lessons/{lesson}/teacher', [ManagementTimetableController::class, 'updateTeacher'])->name('timetable.lessons.teacher.update');
 

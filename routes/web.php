@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/timetable/lessons/{lesson}/cancel', [ManagementTimetableController::class, 'cancel'])->name('timetable.lessons.cancel');
         Route::get('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'editReschedule'])->name('timetable.lessons.reschedule.edit');
         Route::put('/timetable/lessons/{lesson}/reschedule', [ManagementTimetableController::class, 'updateReschedule'])->name('timetable.lessons.reschedule.update');
+        Route::post('/timetable/lessons/{lesson}/reschedule/undo', [ManagementTimetableController::class, 'undoReschedule'])->name('timetable.lessons.reschedule.undo');
         Route::get('/timetable/lessons/{lesson}/teacher', [ManagementTimetableController::class, 'editTeacher'])->name('timetable.lessons.teacher.edit');
         Route::put('/timetable/lessons/{lesson}/teacher', [ManagementTimetableController::class, 'updateTeacher'])->name('timetable.lessons.teacher.update');
 
@@ -70,6 +71,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/students/create', [ManagementUserController::class, 'createStudent'])->name('users.students.create');
         Route::get('/users/teachers/create', [ManagementUserController::class, 'createTeacher'])->name('users.teachers.create');
         Route::post('/users', [ManagementUserController::class, 'store'])->name('users.store');
+        Route::post('/users/{user}/void-classes', [ManagementUserController::class, 'voidClasses'])->name('users.void-classes');
+        Route::delete('/users/{user}', [ManagementUserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/branches', [ManagementBranchController::class, 'index'])->name('branches.index');
         Route::get('/branches/create', [ManagementBranchController::class, 'create'])->name('branches.create');

@@ -232,13 +232,102 @@ class ManagementTimetableTest extends TestCase
 
         $this->assertDatabaseHas('lessons', [
             'id' => $l1->id,
-            'status' => Lesson::STATUS_POSTPONED,
+            'status' => Lesson::STATUS_SCHEDULED,
             'scheduled_start_at' => '2026-01-06 15:00:00',
         ]);
 
         $this->assertDatabaseHas('lessons', [
             'id' => $l2->id,
             'scheduled_start_at' => $start2->toDateTimeString(),
+        ]);
+    }
+
+    public function test_management_can_undo_replacement_back_to_previous_slot(): void
+    {
+        $management = User::factory()->create(['role' => 'management']);
+        $teacher = User::factory()->create(['role' => 'teacher']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $branch = Branch::create([
+            'name' => 'Branch A',
+            'active' => true,
+            'classrooms_count' => 2,
+        ]);
+
+        $plan = FeePlan::create([
+            'name' => 'Test Plan 3',
+            'cycle_fee_cents' => 30000,
+            'lessons_per_cycle' => 4,
+            'minutes_per_lesson_default' => 60,
+            'allow_half_hour' => true,
+            'active' => true,
+        ]);
+
+        $enrollment = Enrollment::create([
+            'branch_id' => $branch->id,
+            'student_id' => $student->id,
+            'teacher_id' => $teacher->id,
+            'fee_plan_id' => $plan->id,
+            'minutes_per_lesson' => 60,
+            'status' => 'active',
+            'started_on' => '2026-01-01',
+        ]);
+
+        $cycle = Cycle::create([
+            'enrollment_id' => $enrollment->id,
+            'cycle_fee_cents' => $plan->cycle_fee_cents,
+            'lessons_per_cycle' => 4,
+            'minutes_per_lesson' => 60,
+            'cycle_minutes_total' => 240,
+            'cycle_number' => 1,
+            'status' => Cycle::STATUS_ACTIVE,
+            'starts_on' => '2026-01-05',
+        ]);
+
+        $originalStart = Carbon::parse('2026-01-05 15:00:00');
+        $replacementStart = Carbon::parse('2026-01-06 18:00:00');
+
+        $lesson = Lesson::create([
+            'cycle_id' => $cycle->id,
+            'student_id' => $student->id,
+            'teacher_id' => $teacher->id,
+            'classroom_number' => 1,
+            'scheduled_start_at' => $originalStart,
+            'scheduled_end_at' => $originalStart->copy()->addMinutes(60),
+            'minutes' => 60,
+            'status' => Lesson::STATUS_SCHEDULED,
+            'sequence_in_cycle' => 1,
+            'cycle_size' => 4,
+        ]);
+
+        $this->actingAs($management)
+            ->put("/management/timetable/lessons/{$lesson->id}/reschedule", [
+                'requested_start_at' => $replacementStart->toDateTimeString(),
+                'reason' => 'Move class',
+            ])
+            ->assertStatus(302);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $lesson->id,
+            'scheduled_start_at' => $replacementStart->toDateTimeString(),
+            'status' => Lesson::STATUS_SCHEDULED,
+        ]);
+
+        $this->actingAs($management)
+            ->post("/management/timetable/lessons/{$lesson->id}/reschedule/undo")
+            ->assertStatus(302);
+
+        $this->assertDatabaseHas('lessons', [
+            'id' => $lesson->id,
+            'scheduled_start_at' => $originalStart->toDateTimeString(),
+            'scheduled_end_at' => $originalStart->copy()->addMinutes(60)->toDateTimeString(),
+            'status' => Lesson::STATUS_SCHEDULED,
+        ]);
+
+        $this->assertDatabaseHas('reschedule_requests', [
+            'lesson_id' => $lesson->id,
+            'reason' => 'Management undo replacement',
+            'status' => 'auto_applied',
         ]);
     }
 

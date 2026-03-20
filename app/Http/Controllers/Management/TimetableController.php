@@ -117,10 +117,12 @@ class TimetableController extends Controller
         $lessonIds = $lessons->pluck('id')->filter()->values();
         $pendingRequestLessonIds = [];
         $replacementLessonIds = [];
+        $undoableReplacementLessonIds = [];
         if ($lessonIds->isNotEmpty()) {
             $requests = RescheduleRequest::query()
                 ->whereIn('lesson_id', $lessonIds)
-                ->get(['lesson_id', 'status', 'requested_start_at']);
+                ->orderByDesc('id')
+                ->get(['id', 'lesson_id', 'type', 'status', 'requested_start_at', 'decision_note']);
 
             $pendingRequestLessonIds = $requests
                 ->where('status', RescheduleRequest::STATUS_PENDING)
@@ -131,11 +133,33 @@ class TimetableController extends Controller
 
             $replacementLessonIds = $requests
                 ->filter(function (RescheduleRequest $request): bool {
-                    return $request->requested_start_at !== null
+                    return $request->type === RescheduleRequest::TYPE_CHANGE
+                        && $request->requested_start_at !== null
                         && in_array($request->status, [RescheduleRequest::STATUS_APPROVED, RescheduleRequest::STATUS_AUTO_APPLIED], true);
                 })
                 ->pluck('lesson_id')
                 ->unique()
+                ->values()
+                ->all();
+
+            $undoableReplacementLessonIds = $requests
+                ->filter(function (RescheduleRequest $request): bool {
+                    if (
+                        $request->type !== RescheduleRequest::TYPE_CHANGE
+                        || $request->requested_start_at === null
+                        || ! in_array($request->status, [RescheduleRequest::STATUS_APPROVED, RescheduleRequest::STATUS_AUTO_APPLIED], true)
+                    ) {
+                        return false;
+                    }
+
+                    $meta = json_decode((string) $request->decision_note, true);
+                    return is_array($meta)
+                        && ! empty($meta['previous_start_at'])
+                        && ! empty($meta['previous_end_at']);
+                })
+                ->unique('lesson_id')
+                ->pluck('lesson_id')
+                ->map(fn ($id) => (int) $id)
                 ->values()
                 ->all();
         }
@@ -275,6 +299,7 @@ class TimetableController extends Controller
             'roomNameByNumber' => $roomNameByNumber,
             'pendingRequestLessonIds' => $pendingRequestLessonIds,
             'replacementLessonIds' => $replacementLessonIds,
+            'undoableReplacementLessonIds' => $undoableReplacementLessonIds,
             'firstLessonAtByStudent' => $firstLessonAtByStudent,
         ]);
     }
@@ -673,6 +698,8 @@ class TimetableController extends Controller
                 }
             }
 
+            $targetRoom = $branchId ? $assignedRoom : (int) ($lesson->classroom_number ?? 1);
+
             RescheduleRequest::create([
                 'lesson_id' => $lesson->id,
                 'requested_by_user_id' => $user->id,
@@ -682,18 +709,141 @@ class TimetableController extends Controller
                 'status' => RescheduleRequest::STATUS_AUTO_APPLIED,
                 'decided_by_user_id' => $user->id,
                 'decided_at' => now(),
+                'decision_note' => json_encode([
+                    'previous_start_at' => $lesson->scheduled_start_at?->format('Y-m-d H:i:s'),
+                    'previous_end_at' => $lesson->scheduled_end_at?->format('Y-m-d H:i:s'),
+                    'previous_room' => (int) ($lesson->classroom_number ?? 1),
+                    'replacement_room' => $targetRoom,
+                ]),
             ]);
 
             $lesson->update([
                 'scheduled_start_at' => $requestedStartAt,
                 'scheduled_end_at' => $requestedEndAt,
-                'classroom_number' => $branchId ? $assignedRoom : ($lesson->classroom_number ?? 1),
+                'classroom_number' => $targetRoom,
                 'status' => Lesson::STATUS_SCHEDULED,
             ]);
         });
 
         return redirect()->route('management.timetable.index', [
             'date' => $requestedStartAt->toDateString(),
+            'day' => $request->input('day'),
+            'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
+        ]);
+    }
+
+    public function undoReschedule(Request $request, Lesson $lesson): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user?->role === 'management', 403);
+
+        DB::transaction(function () use ($lesson, $user): void {
+            $lesson = Lesson::query()
+                ->with('cycle.enrollment.branch')
+                ->lockForUpdate()
+                ->findOrFail($lesson->id);
+
+            $latestReplacement = RescheduleRequest::query()
+                ->where('lesson_id', $lesson->id)
+                ->where('type', RescheduleRequest::TYPE_CHANGE)
+                ->whereNotNull('requested_start_at')
+                ->whereIn('status', [RescheduleRequest::STATUS_APPROVED, RescheduleRequest::STATUS_AUTO_APPLIED])
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $latestReplacement) {
+                throw ValidationException::withMessages([
+                    'action' => 'No replacement history to undo.',
+                ]);
+            }
+
+            $snapshot = json_decode((string) $latestReplacement->decision_note, true);
+            if (
+                ! is_array($snapshot)
+                || empty($snapshot['previous_start_at'])
+                || empty($snapshot['previous_end_at'])
+            ) {
+                throw ValidationException::withMessages([
+                    'action' => 'Undo replacement is not available for this class yet.',
+                ]);
+            }
+
+            $previousStartAt = Carbon::parse($snapshot['previous_start_at']);
+            $previousEndAt = Carbon::parse($snapshot['previous_end_at']);
+            $targetRoom = max(1, (int) ($snapshot['previous_room'] ?? ($lesson->classroom_number ?? 1)));
+            $branchId = $lesson->cycle?->enrollment?->branch_id ? (int) $lesson->cycle->enrollment->branch_id : null;
+
+            if ($branchId) {
+                $roomNumbers = Room::query()
+                    ->where('branch_id', $branchId)
+                    ->where('active', true)
+                    ->orderBy('number')
+                    ->pluck('number')
+                    ->map(fn ($n) => (int) $n)
+                    ->values()
+                    ->all();
+
+                if (count($roomNumbers) === 0) {
+                    $count = (int) ($lesson->cycle?->enrollment?->branch?->classrooms_count ?? 1);
+                    $roomNumbers = range(1, max(1, $count));
+                }
+
+                $tryRooms = array_values(array_unique(array_merge([$targetRoom], $roomNumbers)));
+                $targetRoom = 0;
+
+                foreach ($tryRooms as $r) {
+                    $occupied = Lesson::query()
+                        ->where('id', '!=', $lesson->id)
+                        ->where('classroom_number', $r)
+                        ->where('scheduled_start_at', '<', $previousEndAt)
+                        ->where('scheduled_end_at', '>', $previousStartAt)
+                        ->where('status', '!=', Lesson::STATUS_CANCELLED)
+                        ->whereHas('cycle.enrollment', fn ($q) => $q->where('branch_id', $branchId))
+                        ->exists();
+
+                    if (! $occupied) {
+                        $targetRoom = (int) $r;
+                        break;
+                    }
+                }
+
+                if ($targetRoom <= 0) {
+                    throw ValidationException::withMessages([
+                        'action' => 'All rooms are full for this original class time.',
+                    ]);
+                }
+            }
+
+            RescheduleRequest::create([
+                'lesson_id' => $lesson->id,
+                'requested_by_user_id' => $user->id,
+                'type' => RescheduleRequest::TYPE_CHANGE,
+                'requested_start_at' => $previousStartAt,
+                'reason' => 'Management undo replacement',
+                'status' => RescheduleRequest::STATUS_AUTO_APPLIED,
+                'decided_by_user_id' => $user->id,
+                'decided_at' => now(),
+                'decision_note' => json_encode([
+                    'undone_request_id' => (int) $latestReplacement->id,
+                    'from_start_at' => $lesson->scheduled_start_at?->format('Y-m-d H:i:s'),
+                    'from_end_at' => $lesson->scheduled_end_at?->format('Y-m-d H:i:s'),
+                    'from_room' => (int) ($lesson->classroom_number ?? 1),
+                ]),
+            ]);
+
+            $lesson->update([
+                'scheduled_start_at' => $previousStartAt,
+                'scheduled_end_at' => $previousEndAt,
+                'classroom_number' => $targetRoom,
+                'status' => Lesson::STATUS_SCHEDULED,
+            ]);
+        });
+
+        $lesson->refresh();
+
+        return redirect()->route('management.timetable.index', [
+            'date' => $lesson->scheduled_start_at?->toDateString(),
             'day' => $request->input('day'),
             'branch_id' => $request->input('branch_id') ?: $lesson->cycle?->enrollment?->branch_id,
         ]);

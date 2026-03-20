@@ -169,22 +169,22 @@
                     <div class="flex flex-wrap items-center gap-4 text-xs text-gray-600">
                         <span class="font-medium text-gray-700">{{ __('Legend:') }}</span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>{{ __('Online class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span>{{ __('Purple - Online class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>{{ __('Personal to do list') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-red-500"></span>{{ __('Red - My personal to do list') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>{{ __('Replacement class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>{{ __('Green - Replacement (reschedule) class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-teal-500"></span>{{ __('New student first class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-cyan-500"></span>{{ __('Tiffany blue - New student first class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>{{ __('KIV not finalise') }}
+                            <span class="h-2.5 w-2.5 rounded-full border border-gray-300 bg-white"></span>{{ __('No colour - Original class') }}
                         </span>
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-gray-300"></span>{{ __('Original class') }}
+                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>{{ __('Apple green - Something not finalised yet (KIV)') }}
                         </span>
                     </div>
 
@@ -287,7 +287,7 @@
                                                             'online' => 'border-purple-200 bg-purple-50',
                                                             'todo' => 'border-red-200 bg-red-50',
                                                             'replacement' => 'border-green-200 bg-green-50',
-                                                            'first' => 'border-teal-200 bg-teal-50',
+                                                            'first' => 'border-cyan-200 bg-cyan-50',
                                                             'kiv' => 'border-lime-200 bg-lime-50',
                                                             default => 'border-gray-200 bg-white',
                                                         };
@@ -295,7 +295,7 @@
                                                             'online' => 'text-purple-700',
                                                             'todo' => 'text-red-700',
                                                             'replacement' => 'text-green-700',
-                                                            'first' => 'text-teal-700',
+                                                            'first' => 'text-cyan-700',
                                                             'kiv' => 'text-lime-700',
                                                             default => 'text-gray-700',
                                                         };
@@ -311,9 +311,11 @@
                                                             'time' => (($lesson->scheduled_start_at?->format('g:i A') ?? '').'–'.($lesson->scheduled_end_at?->format('g:i A') ?? '')),
                                                             'scheduled_start_local' => $lesson->scheduled_start_at?->format('Y-m-d\\TH:i') ?? '',
                                                             'reschedule_action' => route('management.timetable.lessons.reschedule.update', $lesson),
+                                                            'undo_reschedule_action' => route('management.timetable.lessons.reschedule.undo', $lesson),
                                                             'teacher_action' => route('management.timetable.lessons.teacher.update', $lesson),
                                                             'postpone_action' => route('management.timetable.lessons.postpone', $lesson),
                                                             'undo_postpone_action' => route('management.timetable.lessons.postpone.undo', $lesson),
+                                                            'can_undo_replacement' => in_array($lesson->id, $undoableReplacementLessonIds ?? [], true),
                                                             'span' => (int) $span,
                                                         ];
                                                     @endphp
@@ -363,6 +365,7 @@
 
             <div id="lesson-actions-menu" class="flex flex-col gap-2">
                 <button type="button" id="lesson-actions-btn-reschedule" class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">{{ __('Replacement') }}</button>
+                <button type="button" id="lesson-actions-btn-undo-replacement" class="w-full inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white rounded-md text-sm hover:bg-sky-700">{{ __('Undo replacement') }}</button>
                 <button type="button" id="lesson-actions-btn-teacher" class="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-900">{{ __('Change teacher (this class only)') }}</button>
                 <button type="button" id="lesson-actions-btn-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700">{{ __('Postpone + shift cycle') }}</button>
                 <button type="button" id="lesson-actions-btn-undo-postpone" class="w-full inline-flex items-center justify-center px-4 py-2 bg-lime-600 text-white rounded-md text-sm hover:bg-lime-700">{{ __('Undo postpone') }}</button>
@@ -444,6 +447,19 @@
                     </form>
                 </div>
             </div>
+
+            <div id="lesson-actions-undo-replacement" class="hidden space-y-4">
+                <div class="text-sm text-gray-700">{{ __('This will move the lesson back to its previous replacement slot time.') }}</div>
+                <div class="flex items-center justify-between gap-3">
+                    <button type="button" class="underline text-sm text-gray-600 hover:text-gray-900" id="lesson-actions-back-5">{{ __('Back') }}</button>
+                    <form id="lesson-actions-undo-replacement-form" method="POST" onsubmit="return confirm('{{ __('Undo this replacement and move back to the previous class time?') }}')">
+                        @csrf
+                        <input type="hidden" name="day" id="lesson-actions-day-5">
+                        <input type="hidden" name="branch_id" id="lesson-actions-branch-5">
+                        <x-primary-button class="bg-sky-600 hover:bg-sky-700 focus:ring-sky-500">{{ __('Confirm undo replacement') }}</x-primary-button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -485,8 +501,10 @@
     var paneTeacher = document.getElementById('lesson-actions-teacher');
     var panePostpone = document.getElementById('lesson-actions-postpone');
     var paneUndoPostpone = document.getElementById('lesson-actions-undo-postpone');
+    var paneUndoReplacement = document.getElementById('lesson-actions-undo-replacement');
 
     var btnReschedule = document.getElementById('lesson-actions-btn-reschedule');
+    var btnUndoReplacement = document.getElementById('lesson-actions-btn-undo-replacement');
     var btnTeacher = document.getElementById('lesson-actions-btn-teacher');
     var btnPostpone = document.getElementById('lesson-actions-btn-postpone');
     var btnUndoPostpone = document.getElementById('lesson-actions-btn-undo-postpone');
@@ -495,6 +513,7 @@
     var back2 = document.getElementById('lesson-actions-back-2');
     var back3 = document.getElementById('lesson-actions-back-3');
     var back4 = document.getElementById('lesson-actions-back-4');
+    var back5 = document.getElementById('lesson-actions-back-5');
 
     var resAt = document.getElementById('lesson-actions-reschedule-at');
     var resReason = document.getElementById('lesson-actions-reschedule-reason');
@@ -518,6 +537,9 @@
     var branch3 = document.getElementById('lesson-actions-branch-3');
     var day4 = document.getElementById('lesson-actions-day-4');
     var branch4 = document.getElementById('lesson-actions-branch-4');
+    var undoRescheduleForm = document.getElementById('lesson-actions-undo-replacement-form');
+    var day5 = document.getElementById('lesson-actions-day-5');
+    var branch5 = document.getElementById('lesson-actions-branch-5');
 
     function showPane(which) {
       menu.classList.add('hidden');
@@ -525,16 +547,19 @@
       paneTeacher.classList.add('hidden');
       panePostpone.classList.add('hidden');
       paneUndoPostpone.classList.add('hidden');
+      paneUndoReplacement.classList.add('hidden');
       if (which === 'menu') menu.classList.remove('hidden');
       if (which === 'reschedule') paneReschedule.classList.remove('hidden');
       if (which === 'teacher') paneTeacher.classList.remove('hidden');
       if (which === 'postpone') panePostpone.classList.remove('hidden');
       if (which === 'undo-postpone') paneUndoPostpone.classList.remove('hidden');
+      if (which === 'undo-replacement') paneUndoReplacement.classList.remove('hidden');
     }
 
     function openModal(payload) {
       subtitle.textContent = (payload.time || '') + ' · ' + (payload.student || '') + ' · ' + (payload.teacher || '');
       resForm.action = payload.reschedule_action || '';
+      undoRescheduleForm.action = payload.undo_reschedule_action || '';
       teacherForm.action = payload.teacher_action || '';
       postponeForm.action = payload.postpone_action || '';
       undoPostponeForm.action = payload.undo_postpone_action || '';
@@ -554,6 +579,11 @@
       if (branch3) branch3.value = branchId;
       if (day4) day4.value = day;
       if (branch4) branch4.value = branchId;
+      if (day5) day5.value = day;
+      if (branch5) branch5.value = branchId;
+
+      var canUndoReplacement = !!payload.can_undo_replacement;
+      btnUndoReplacement.classList.toggle('hidden', !canUndoReplacement);
 
       showPane('menu');
       modal.classList.remove('hidden');
@@ -581,6 +611,7 @@
     });
 
     btnReschedule.addEventListener('click', function () { showPane('reschedule'); });
+    btnUndoReplacement.addEventListener('click', function () { showPane('undo-replacement'); });
     btnTeacher.addEventListener('click', function () { showPane('teacher'); });
     btnPostpone.addEventListener('click', function () { showPane('postpone'); });
     btnUndoPostpone.addEventListener('click', function () { showPane('undo-postpone'); });
@@ -588,6 +619,7 @@
     back2.addEventListener('click', function () { showPane('menu'); });
     back3.addEventListener('click', function () { showPane('menu'); });
     back4.addEventListener('click', function () { showPane('menu'); });
+    back5.addEventListener('click', function () { showPane('menu'); });
 
     resForm.addEventListener('submit', function () {
       resHiddenAt.value = resAt.value;

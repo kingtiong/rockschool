@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Management;
 
 use App\Http\Controllers\Controller;
+use App\Models\Lesson;
 use App\Models\RescheduleRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,8 @@ class RescheduleRequestController extends Controller
             $lesson->update([
                 'scheduled_start_at' => $rescheduleRequest->requested_start_at,
                 'scheduled_end_at' => $rescheduleRequest->requested_start_at->copy()->addMinutes($lesson->minutes),
-                'status' => 'postponed',
+                // A confirmed replacement becomes the active class slot.
+                'status' => Lesson::STATUS_SCHEDULED,
             ]);
         }
 

@@ -232,7 +232,7 @@ class ManagementTimetableTest extends TestCase
 
         $this->assertDatabaseHas('lessons', [
             'id' => $l1->id,
-            'status' => Lesson::STATUS_POSTPONED,
+            'status' => Lesson::STATUS_SCHEDULED,
             'scheduled_start_at' => '2026-01-06 15:00:00',
         ]);
 

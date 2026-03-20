@@ -71,6 +71,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/students/create', [ManagementUserController::class, 'createStudent'])->name('users.students.create');
         Route::get('/users/teachers/create', [ManagementUserController::class, 'createTeacher'])->name('users.teachers.create');
         Route::post('/users', [ManagementUserController::class, 'store'])->name('users.store');
+        Route::post('/users/{user}/void-classes', [ManagementUserController::class, 'voidClasses'])->name('users.void-classes');
+        Route::delete('/users/{user}', [ManagementUserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/branches', [ManagementBranchController::class, 'index'])->name('branches.index');
         Route::get('/branches/create', [ManagementBranchController::class, 'create'])->name('branches.create');
